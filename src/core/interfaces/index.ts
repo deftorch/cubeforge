@@ -6,4 +6,6 @@ export type { IViewportShading } from './IViewportShading';
 export type { ITransformService } from './ITransformService';
 export type { IMaterialService } from './IMaterialService';
 export type { IEventBus } from './IEventBus';
+export type { IInputHandler } from './IInputHandler';
+export { InputPriority } from './IInputHandler';
 

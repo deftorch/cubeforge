@@ -9,8 +9,8 @@ import { ViewportOverlay } from './ViewportOverlay';
 /**
  * Viewport Component - 3D rendering viewport
  * 
- * Refactored to delegate keyboard shortcuts to KeyboardManager.
- * Handles only mouse events and Three.js scene management.
+ * Refactored to use InputDispatcher for all input handling.
+ * The dispatcher routes events to handlers based on priority.
  */
 export const Viewport: Component = () => {
     let containerRef: HTMLDivElement | undefined;
@@ -23,6 +23,8 @@ export const Viewport: Component = () => {
         boxSelectTool,
         circleSelectTool,
         pivotController,
+        inputDispatcher,
+        transformControlsHandler,
     } = useCoreContext();
 
     onMount(() => {
@@ -39,133 +41,75 @@ export const Viewport: Component = () => {
         const canvas = sceneManager.getCanvas();
 
         // ============================================
-        // MOUSE EVENT HANDLERS
+        // INPUT DISPATCHER EVENT HANDLERS
+        // All events are routed through the InputDispatcher
+        // which handles priority and modal blocking automatically
         // ============================================
 
-        // Handle mouse down
         const handleMouseDown = (event: MouseEvent) => {
-            // Check box select first
-            if (boxSelectTool.isBoxSelectActive()) {
-                boxSelectTool.onMouseDown(event);
-                return;
-            }
-
-            // Check circle select
-            if (circleSelectTool.isCircleSelectActive()) {
-                circleSelectTool.onMouseDown(event);
-                return;
-            }
-
-            // Shift + Right click to place 3D cursor
+            // Special case: Shift + Right click to place 3D cursor
+            // This is a viewport-specific action, not handled by dispatcher
             if (event.shiftKey && event.button === 2) {
                 event.preventDefault();
                 pivotController.getCursor().placeAtMouse(event);
                 return;
             }
+
+            // Dispatch to registered handlers
+            inputDispatcher.dispatchMouseDown(event);
         };
 
-        // Handle click for selection
         const handleClick = (event: MouseEvent) => {
             // Ignore if dragging transform controls
-            if (sceneManager.transformControls.dragging) return;
+            if (transformControlsHandler.getIsDragging()) return;
 
-            // Ignore if in special select mode
-            if (boxSelectTool.isBoxSelectActive() || circleSelectTool.isCircleSelectActive()) return;
-
-            selectionManager.handleClick(event);
+            // Dispatch to registered handlers
+            inputDispatcher.dispatchClick(event);
         };
 
-        // Handle mouse move
         const handleMouseMove = (event: MouseEvent) => {
-            // Box select dragging
-            if (boxSelectTool.isBoxSelectActive()) {
-                boxSelectTool.onMouseMove(event);
-                return;
-            }
-
-            // Circle select
-            if (circleSelectTool.isCircleSelectActive()) {
-                circleSelectTool.onMouseMove(event);
-                return;
-            }
-
-            // Normal hover
-            selectionManager.handleMouseMove(event);
+            inputDispatcher.dispatchMouseMove(event);
         };
 
-        // Handle mouse up
         const handleMouseUp = (event: MouseEvent) => {
-            // Box select complete
-            if (boxSelectTool.isBoxSelectActive()) {
-                boxSelectTool.onMouseUp(event, event.shiftKey);
-                return;
-            }
-
-            // Circle select
-            if (circleSelectTool.isCircleSelectActive()) {
-                circleSelectTool.onMouseUp(event);
-                return;
-            }
+            inputDispatcher.dispatchMouseUp(event);
         };
 
-        // Handle wheel for circle select radius
         const handleWheel = (event: WheelEvent) => {
-            if (circleSelectTool.isCircleSelectActive()) {
-                circleSelectTool.onWheel(event);
-            }
+            inputDispatcher.dispatchWheel(event);
         };
 
-        // ============================================
-        // ESCAPE KEY - Still handled locally for tool cancellation
-        // ============================================
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                if (boxSelectTool.isBoxSelectActive()) {
-                    boxSelectTool.deactivate();
-                    uiActions.setStatus('Box Select cancelled');
-                    return;
-                }
-                if (circleSelectTool.isCircleSelectActive()) {
-                    circleSelectTool.deactivate();
-                    uiActions.setStatus('Circle Select cancelled');
-                    return;
-                }
-            }
+            inputDispatcher.dispatchKeyDown(event);
+        };
+
+        const handleContextMenu = (event: MouseEvent) => {
+            // Always prevent context menu in viewport
+            event.preventDefault();
+            inputDispatcher.dispatchContextMenu(event);
         };
 
         // ============================================
-        // TRANSFORM CONTROLS HANDLERS
+        // TRANSFORM CONTROLS CALLBACKS
+        // Setup callbacks via TransformControlsHandler
         // ============================================
 
-        // Handle transform controls dragging
-        const handleTransformDraggingChanged = (event: any) => {
-            const selectedIds = selectionActions.getSelectedIds();
-            if (selectedIds.length === 0) return;
+        transformControlsHandler.onDragStart((cubeId: string) => {
+            cubeManager.startTransform(cubeId);
+        });
 
-            // We only support transforming one object at a time for now via gizmo
-            const cubeId = selectedIds[0];
+        transformControlsHandler.onDragEnd((cubeId: string) => {
+            cubeManager.endTransform(cubeId);
+        });
 
-            if (event.value) {
-                // Drag started
-                cubeManager.startTransform(cubeId);
-            } else {
-                // Drag ended
-                cubeManager.endTransform(cubeId);
-            }
-
-            // Update orbit controls
-            sceneManager.orbitControls.enabled = !event.value;
-        };
-
-        // Handle transform controls change (during drag)
-        const handleTransformChange = () => {
+        transformControlsHandler.onDragChange(() => {
             const selectedIds = selectionActions.getSelectedIds();
             if (selectedIds.length > 0) {
                 cubeManager.syncMeshToStore(selectedIds[0]);
                 selectionManager.syncOutlines();
                 getViewportShading().updateWireframes();
             }
-        };
+        });
 
         // ============================================
         // EVENT LISTENERS
@@ -177,9 +121,7 @@ export const Viewport: Component = () => {
         canvas.addEventListener('mouseup', handleMouseUp);
         canvas.addEventListener('wheel', handleWheel);
         canvas.addEventListener('keydown', handleKeyDown);
-        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-        sceneManager.transformControls.addEventListener('change', handleTransformChange);
-        sceneManager.transformControls.addEventListener('dragging-changed', handleTransformDraggingChanged);
+        canvas.addEventListener('contextmenu', handleContextMenu);
 
         // ============================================
         // DRAG AND DROP HANDLERS (for create cube from toolbar + move from hierarchy)
@@ -339,8 +281,7 @@ export const Viewport: Component = () => {
             canvas.removeEventListener('mouseup', handleMouseUp);
             canvas.removeEventListener('wheel', handleWheel);
             canvas.removeEventListener('keydown', handleKeyDown);
-            sceneManager.transformControls.removeEventListener('change', handleTransformChange);
-            sceneManager.transformControls.removeEventListener('dragging-changed', handleTransformDraggingChanged);
+            canvas.removeEventListener('contextmenu', handleContextMenu);
             removeGhostCube(); // Clean up ghost cube if exists
             sceneManager.unmount();
             selectionManager.dispose();

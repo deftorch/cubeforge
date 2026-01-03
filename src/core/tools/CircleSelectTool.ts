@@ -1,11 +1,38 @@
 import * as THREE from 'three';
 import { getSceneManager } from '@/core/scene/SceneManager';
 import { selectionActions } from '@/stores/selectionStore';
+import type { IInputHandler } from '@/core/interfaces';
+import { InputPriority } from '@/core/interfaces';
+import type { OrbitControlsHandler } from '@/core/input/OrbitControlsHandler';
 
 /**
  * CircleSelectTool - Paint selection with adjustable radius
+ * 
+ * Implements IInputHandler for integration with InputDispatcher.
+ * Priority: TOOL (75) - higher than navigation, lower than modal operators.
+ * 
+ * When active, this tool disables OrbitControls to prevent camera rotation
+ * during circle selection.
  */
-export class CircleSelectTool {
+export class CircleSelectTool implements IInputHandler {
+    // ============================================
+    // IInputHandler INTERFACE PROPERTIES
+    // ============================================
+
+    readonly id = 'circle-select';
+    readonly priority = InputPriority.TOOL;
+    enabled = false; // Disabled by default, activated via keyboard shortcut
+
+    // ============================================
+    // DEPENDENCIES
+    // ============================================
+
+    private orbitControlsHandler: OrbitControlsHandler | null = null;
+
+    // ============================================
+    // INTERNAL STATE
+    // ============================================
+
     private isActive = false;
     private isPainting = false;
     private radius = 50; // pixels
@@ -24,6 +51,13 @@ export class CircleSelectTool {
     private paintedIds: Set<string> = new Set();
 
     constructor() { }
+
+    /**
+     * Set the OrbitControlsHandler for disabling camera during selection
+     */
+    setOrbitControlsHandler(handler: OrbitControlsHandler): void {
+        this.orbitControlsHandler = handler;
+    }
 
     /**
      * Initialize the circle select tool
@@ -53,7 +87,12 @@ export class CircleSelectTool {
      */
     activate(): void {
         this.isActive = true;
+        this.enabled = true;
         this.paintedIds.clear();
+
+        // Disable orbit controls to prevent camera rotation during selection
+        this.orbitControlsHandler?.disable();
+
         if (this.containerElement) {
             this.containerElement.style.cursor = 'none';
         }
@@ -65,8 +104,13 @@ export class CircleSelectTool {
      */
     deactivate(): void {
         this.isActive = false;
+        this.enabled = false;
         this.isPainting = false;
         this.paintedIds.clear();
+
+        // Re-enable orbit controls
+        this.orbitControlsHandler?.enable();
+
         if (this.containerElement) {
             this.containerElement.style.cursor = 'default';
         }
@@ -87,6 +131,10 @@ export class CircleSelectTool {
         this.radius = Math.max(this.minRadius, Math.min(this.maxRadius, this.radius + delta));
         this.updateOverlaySize();
     }
+
+    // ============================================
+    // IInputHandler EVENT METHODS
+    // ============================================
 
     /**
      * Handle mouse down - start painting selection
@@ -122,9 +170,10 @@ export class CircleSelectTool {
 
         if (this.isPainting) {
             this.selectAtPoint(event, event.buttons === 2);
+            return true; // Consume event when painting
         }
 
-        return true;
+        return true; // Always consume move events when tool is active
     }
 
     /**
@@ -153,14 +202,30 @@ export class CircleSelectTool {
     }
 
     /**
-     * Handle escape - exit circle select
+     * Handle keyboard events
      */
-    onEscape(): boolean {
+    onKeyDown(event: KeyboardEvent): boolean {
         if (!this.isActive) return false;
 
-        this.deactivate();
-        return true;
+        if (event.key === 'Escape') {
+            this.deactivate();
+            return true;
+        }
+
+        return false;
     }
+
+    /**
+     * Handle context menu to prevent default
+     */
+    onContextMenu(_event: MouseEvent): boolean {
+        if (!this.isActive) return false;
+        return true; // Consume to prevent context menu
+    }
+
+    // ============================================
+    // PRIVATE METHODS
+    // ============================================
 
     /**
      * Update overlay position to follow cursor

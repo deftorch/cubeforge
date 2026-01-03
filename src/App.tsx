@@ -1,8 +1,8 @@
 import { Component, onMount, onCleanup } from 'solid-js';
-import { Toolbar, LeftPanel, RightPanel, StatusBar } from '@/components/layout';
+import { Toolbar, LeftPanel, RightPanel, StatusBar, ResizeHandle } from '@/components/layout';
 import { Viewport } from '@/components/viewport';
 import { CoreProvider } from '@/components/CoreProvider';
-import { uiStore } from '@/stores/uiStore';
+import { layoutStore, layoutActions } from '@/stores/layoutStore';
 import { registerDefaultShortcuts, unregisterShortcuts } from '@/core/input';
 import { coreContext } from '@/core/CoreContext';
 
@@ -20,6 +20,15 @@ const App: Component = () => {
         delete (window as any).__coreContext;
     });
 
+    // Resize handlers
+    const handleLeftResize = (delta: number) => {
+        layoutActions.setLeftPanelWidth(layoutStore.leftPanelWidth + delta);
+    };
+
+    const handleRightResize = (delta: number) => {
+        layoutActions.setRightPanelWidth(layoutStore.rightPanelWidth + delta);
+    };
+
     return (
         <CoreProvider>
             <div class="h-screen flex flex-col bg-surface-900 text-surface-100">
@@ -29,20 +38,41 @@ const App: Component = () => {
                 {/* Main content area */}
                 <div class="flex-1 flex overflow-hidden">
                     {/* Left Panel */}
-                    {uiStore.showLeftPanel && <LeftPanel />}
+                    {layoutStore.showLeftPanel && (
+                        <>
+                            <div style={{ width: `${layoutStore.leftPanelWidth}px` }}>
+                                <LeftPanel />
+                            </div>
+                            <ResizeHandle
+                                position="left"
+                                onResize={handleLeftResize}
+                            />
+                        </>
+                    )}
 
                     {/* 3D Viewport */}
                     <Viewport />
 
                     {/* Right Panel */}
-                    {uiStore.showRightPanel && <RightPanel />}
+                    {layoutStore.showRightPanel && (
+                        <>
+                            <ResizeHandle
+                                position="right"
+                                onResize={handleRightResize}
+                            />
+                            <div style={{ width: `${layoutStore.rightPanelWidth}px` }}>
+                                <RightPanel />
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Status Bar */}
-                {uiStore.showStatusBar && <StatusBar />}
+                {layoutStore.showStatusBar && <StatusBar />}
             </div>
         </CoreProvider>
     );
 };
 
 export default App;
+

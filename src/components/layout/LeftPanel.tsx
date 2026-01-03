@@ -259,7 +259,7 @@ export const LeftPanel: Component = () => {
     };
 
     return (
-        <div class="w-64 bg-surface-800 border-r border-surface-700 flex flex-col">
+        <div class="w-full h-full bg-surface-800 border-r border-surface-700 flex flex-col">
             {/* Header - Drop here to unparent */}
             <div
                 class={`px-3 py-2 border-b border-surface-700 transition-colors ${isRootDropTarget() ? 'bg-primary-600/20 border-primary-500/50' : ''

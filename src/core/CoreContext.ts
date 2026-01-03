@@ -11,6 +11,12 @@ import { PivotController, getPivotController } from '@/core/transform/PivotContr
 import { BoxSelectTool, getBoxSelectTool } from '@/core/tools/BoxSelectTool';
 import { CircleSelectTool, getCircleSelectTool } from '@/core/tools/CircleSelectTool';
 import { SceneSynchronizer } from '@/core/scene/SceneSynchronizer';
+import {
+    InputDispatcher,
+    SelectionHandler,
+    OrbitControlsHandler,
+    TransformControlsHandler,
+} from '@/core/input';
 
 import type { IMaterialService } from '@/core/interfaces';
 import type { IEventBus } from '@/core/interfaces';
@@ -38,6 +44,12 @@ export class CoreContext {
     public readonly boxSelectTool: BoxSelectTool;
     public readonly circleSelectTool: CircleSelectTool;
     public readonly sceneSynchronizer: SceneSynchronizer;
+
+    // Input system
+    public readonly inputDispatcher: InputDispatcher;
+    public readonly selectionHandler: SelectionHandler;
+    public readonly orbitControlsHandler: OrbitControlsHandler;
+    public readonly transformControlsHandler: TransformControlsHandler;
 
     private static instance: CoreContext;
 
@@ -92,6 +104,29 @@ export class CoreContext {
             meshFactory,
             this.viewportShading
         );
+
+        // Layer 7: Input System
+        this.inputDispatcher = new InputDispatcher();
+
+        // Create input handlers
+        this.selectionHandler = new SelectionHandler(this.selectionManager);
+        this.orbitControlsHandler = new OrbitControlsHandler(this.sceneManager.orbitControls);
+        this.transformControlsHandler = new TransformControlsHandler(this.sceneManager.transformControls);
+
+        // Configure transform controls handler
+        this.transformControlsHandler.setDispatcher(this.inputDispatcher);
+        this.transformControlsHandler.setOrbitControlsHandler(this.orbitControlsHandler);
+
+        // Configure selection tools to disable camera during selection
+        this.boxSelectTool.setOrbitControlsHandler(this.orbitControlsHandler);
+        this.circleSelectTool.setOrbitControlsHandler(this.orbitControlsHandler);
+
+        // Register handlers with dispatcher (order doesn't matter, sorted by priority)
+        this.inputDispatcher.register(this.transformControlsHandler); // Priority: 95 (MODAL)
+        this.inputDispatcher.register(this.boxSelectTool);             // Priority: 75 (TOOL)
+        this.inputDispatcher.register(this.circleSelectTool);          // Priority: 75 (TOOL)
+        this.inputDispatcher.register(this.selectionHandler);          // Priority: 50 (SELECTION)
+        this.inputDispatcher.register(this.orbitControlsHandler);      // Priority: 20 (NAVIGATION)
     }
 
     public static getInstance(): CoreContext {

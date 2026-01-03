@@ -1,5 +1,6 @@
 import { getKeyboardManager } from '@/core/input/KeyboardManager';
 import { uiActions } from '@/stores/uiStore';
+import { layoutActions } from '@/stores/layoutStore';
 import { selectionActions } from '@/stores/selectionStore';
 import { historyActions } from '@/stores/historyStore';
 import { registerViewportShortcuts } from './viewportShortcuts';
@@ -177,6 +178,30 @@ export function registerDefaultShortcuts(
             uiActions.toggleInteractionMode();
         },
         description: 'Toggle Object/Edit mode',
+    });
+
+    // =====================================
+    // Panel visibility shortcuts
+    // =====================================
+
+    // Toggle Right Panel (Properties) - N key like Blender
+    keyboardManager.register({
+        key: 'n',
+        action: () => {
+            layoutActions.toggleRightPanel();
+            uiActions.setStatus('Properties panel toggled');
+        },
+        description: 'Toggle Properties panel',
+    });
+
+    // Toggle Left Panel (Scene hierarchy) - T key like Blender's toolbar
+    keyboardManager.register({
+        key: 't',
+        action: () => {
+            layoutActions.toggleLeftPanel();
+            uiActions.setStatus('Scene panel toggled');
+        },
+        description: 'Toggle Scene panel',
     });
 
     // Attach keyboard manager to window

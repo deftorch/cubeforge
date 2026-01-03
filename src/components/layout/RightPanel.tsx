@@ -6,6 +6,7 @@ import { useCoreContext } from '@/components/CoreProvider';
 import { Vector3Input } from '@/components/ui/Input';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { HorizontalSlider } from '@/components/ui/HorizontalSlider';
+import { CollapsibleSection } from '@/components/layout/CollapsibleSection';
 import { radToDeg, degToRad } from '@/utils/math';
 
 export const RightPanel: Component = () => {
@@ -190,7 +191,7 @@ export const RightPanel: Component = () => {
     };
 
     return (
-        <div class="w-72 bg-surface-800 border-l border-surface-700 flex flex-col">
+        <div class="w-full h-full bg-surface-800 border-l border-surface-700 flex flex-col">
             {/* Header */}
             <div class="px-3 py-2 border-b border-surface-700">
                 <h2 class="text-sm font-medium text-surface-200">Properties</h2>
@@ -252,11 +253,7 @@ export const RightPanel: Component = () => {
                             </div>
 
                             {/* Transform Section */}
-                            <div class="space-y-3">
-                                <h3 class="text-xs font-semibold text-surface-300 uppercase tracking-wider border-b border-surface-700 pb-1">
-                                    Transform
-                                </h3>
-
+                            <CollapsibleSection id="props-transform" title="Transform">
                                 {/* Position */}
                                 <Vector3Input
                                     label="Position"
@@ -295,14 +292,10 @@ export const RightPanel: Component = () => {
                                     onCommit={commitScale}
                                     step={0.1}
                                 />
-                            </div>
+                            </CollapsibleSection>
 
                             {/* Material Section */}
-                            <div class="space-y-3">
-                                <h3 class="text-xs font-semibold text-surface-300 uppercase tracking-wider border-b border-surface-700 pb-1">
-                                    Material
-                                </h3>
-
+                            <CollapsibleSection id="props-material" title="Material">
                                 {/* Color */}
                                 <ColorPicker
                                     label="Color"
@@ -336,7 +329,7 @@ export const RightPanel: Component = () => {
                                     onCommit={commitRoughness}
                                     fillColor="#4a9eff"
                                 />
-                            </div>
+                            </CollapsibleSection>
                         </div>
                     )}
                 </Show>

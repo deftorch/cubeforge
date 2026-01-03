@@ -1,11 +1,38 @@
 import * as THREE from 'three';
 import { getSceneManager } from '@/core/scene/SceneManager';
 import { selectionActions } from '@/stores/selectionStore';
+import type { IInputHandler } from '@/core/interfaces';
+import { InputPriority } from '@/core/interfaces';
+import type { OrbitControlsHandler } from '@/core/input/OrbitControlsHandler';
 
 /**
  * BoxSelectTool - Drag rectangle to select multiple objects
+ * 
+ * Implements IInputHandler for integration with InputDispatcher.
+ * Priority: TOOL (75) - higher than navigation, lower than modal operators.
+ * 
+ * When active, this tool disables OrbitControls to prevent camera rotation
+ * during box selection drag.
  */
-export class BoxSelectTool {
+export class BoxSelectTool implements IInputHandler {
+    // ============================================
+    // IInputHandler INTERFACE PROPERTIES
+    // ============================================
+
+    readonly id = 'box-select';
+    readonly priority = InputPriority.TOOL;
+    enabled = false; // Disabled by default, activated via keyboard shortcut
+
+    // ============================================
+    // DEPENDENCIES
+    // ============================================
+
+    private orbitControlsHandler: OrbitControlsHandler | null = null;
+
+    // ============================================
+    // INTERNAL STATE
+    // ============================================
+
     private isActive = false;
     private isDragging = false;
     private startPoint: THREE.Vector2 = new THREE.Vector2();
@@ -16,6 +43,13 @@ export class BoxSelectTool {
     private containerElement: HTMLElement | null = null;
 
     constructor() { }
+
+    /**
+     * Set the OrbitControlsHandler for disabling camera during selection
+     */
+    setOrbitControlsHandler(handler: OrbitControlsHandler): void {
+        this.orbitControlsHandler = handler;
+    }
 
     /**
      * Initialize the box select tool on a container
@@ -42,6 +76,11 @@ export class BoxSelectTool {
      */
     activate(): void {
         this.isActive = true;
+        this.enabled = true;
+
+        // Disable orbit controls to prevent camera rotation during selection
+        this.orbitControlsHandler?.disable();
+
         if (this.containerElement) {
             this.containerElement.style.cursor = 'crosshair';
         }
@@ -52,8 +91,13 @@ export class BoxSelectTool {
      */
     deactivate(): void {
         this.isActive = false;
+        this.enabled = false;
         this.isDragging = false;
         this.hideOverlay();
+
+        // Re-enable orbit controls
+        this.orbitControlsHandler?.enable();
+
         if (this.containerElement) {
             this.containerElement.style.cursor = 'default';
         }
@@ -66,11 +110,16 @@ export class BoxSelectTool {
         return this.isActive;
     }
 
+    // ============================================
+    // IInputHandler EVENT METHODS
+    // ============================================
+
     /**
      * Handle mouse down - start selection
      */
     onMouseDown(event: MouseEvent): boolean {
         if (!this.isActive) return false;
+        if (event.button !== 0) return false; // Only left click
 
         this.isDragging = true;
         this.startPoint.set(event.clientX, event.clientY);
@@ -79,7 +128,7 @@ export class BoxSelectTool {
         this.updateOverlay();
         this.showOverlay();
 
-        return true;
+        return true; // Event consumed
     }
 
     /**
@@ -91,15 +140,16 @@ export class BoxSelectTool {
         this.endPoint.set(event.clientX, event.clientY);
         this.updateOverlay();
 
-        return true;
+        return true; // Event consumed
     }
 
     /**
      * Handle mouse up - complete selection
      */
-    onMouseUp(event: MouseEvent, addToSelection: boolean = false): boolean {
+    onMouseUp(event: MouseEvent): boolean {
         if (!this.isActive || !this.isDragging) return false;
 
+        const addToSelection = event.shiftKey;
         this.endPoint.set(event.clientX, event.clientY);
 
         // Perform selection
@@ -110,8 +160,26 @@ export class BoxSelectTool {
         this.hideOverlay();
         this.deactivate();
 
-        return true;
+        return true; // Event consumed
     }
+
+    /**
+     * Handle escape key - cancel box select
+     */
+    onKeyDown(event: KeyboardEvent): boolean {
+        if (!this.isActive) return false;
+
+        if (event.key === 'Escape') {
+            this.deactivate();
+            return true; // Event consumed
+        }
+
+        return false;
+    }
+
+    // ============================================
+    // PRIVATE METHODS
+    // ============================================
 
     /**
      * Update selection box overlay position/size
