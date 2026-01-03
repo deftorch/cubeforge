@@ -1,0 +1,17 @@
+src/components/ui/Input.tsx(16,19): error TS6133: 'rest' is declared but its value is never read.
+src/components/viewport/ViewportControls.tsx(4,30): error TS6133: 'PivotMode' is declared but its value is never read.
+src/core/scene/CubeManager.ts(222,20): error TS6133: 'cubeId' is declared but its value is never read.
+src/core/scene/CubeManager.ts(226,18): error TS6133: 'cubeId' is declared but its value is never read.
+src/core/scene/__tests__/CubeManager.test.ts(286,19): error TS6133: 'cube3' is declared but its value is never read.
+src/core/scene/__tests__/HierarchyManager.test.ts(3,28): error TS2724: '"../HierarchyManager"' has no exported member named 'getHierarchyManager'. Did you mean 'HierarchyManager'?
+src/core/scene/__tests__/HierarchyManager.test.ts(79,19): error TS2554: Expected 1 arguments, but got 0.
+src/core/scene/__tests__/HierarchyManager.test.ts(140,68): error TS2554: Expected 2 arguments, but got 3.
+src/core/scene/__tests__/HierarchyManager.test.ts(148,64): error TS2554: Expected 2 arguments, but got 3.
+src/core/scene/__tests__/HierarchyManager.test.ts(157,68): error TS2554: Expected 2 arguments, but got 3.
+src/core/scene/__tests__/MeshFactory.test.ts(1,44): error TS6133: 'vi' is declared but its value is never read.
+src/core/scene/__tests__/SceneManager.test.ts(1,32): error TS6133: 'vi' is declared but its value is never read.
+src/core/selection/SelectionManager.ts(35,13): error TS6133: 'event' is declared but its value is never read.
+src/core/tools/BoxSelectTool.ts(228,15): error TS6133: 'selectionProjection' is declared but its value is never read.
+src/core/tools/__tests__/BoxSelectTool.test.ts(1,32): error TS6133: 'vi' is declared but its value is never read.
+src/core/viewport/__tests__/ViewportShading.test.ts(1,32): error TS6133: 'vi' is declared but its value is never read.
+src/stores/__tests__/historyStore.test.ts(2,1): error TS6133: 'createStore' is declared but its value is never read.

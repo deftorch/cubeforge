@@ -1,0 +1,11 @@
+
+> cubeforge-web@1.0.0 type-check
+> tsc --noEmit
+
+src/components/ui/Input.tsx(16,19): error TS6133: 'rest' is declared but its value is never read.
+src/core/scene/__tests__/CubeManager.test.ts(286,19): error TS6133: 'cube3' is declared but its value is never read.
+src/core/scene/__tests__/MeshFactory.test.ts(1,44): error TS6133: 'vi' is declared but its value is never read.
+src/core/scene/__tests__/SceneManager.test.ts(1,32): error TS6133: 'vi' is declared but its value is never read.
+src/core/tools/__tests__/BoxSelectTool.test.ts(1,32): error TS6133: 'vi' is declared but its value is never read.
+src/core/viewport/__tests__/ViewportShading.test.ts(1,32): error TS6133: 'vi' is declared but its value is never read.
+src/stores/__tests__/historyStore.test.ts(2,1): error TS6133: 'createStore' is declared but its value is never read.

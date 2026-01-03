@@ -1,0 +1,6 @@
+
+> cubeforge-web@1.0.0 type-check
+> tsc --noEmit
+
+src/core/scene/__tests__/SceneManager.test.ts(248,1): error TS1160: Unterminated template literal.
+src/core/tools/__tests__/BoxSelectTool.test.ts(199,1): error TS1160: Unterminated template literal.

@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: theme('colors.surface.800');
+}
+
+::-webkit-scrollbar-thumb {
+  background: theme('colors.surface.600');
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: theme('colors.surface.500');
+}
+
+/* Selection highlight */
+::selection {
+  background: theme('colors.primary.600');
+  color: white;
+}
+
+/* Canvas focus outline */
+canvas:focus {
+  outline: 2px solid theme('colors.primary.500');
+  outline-offset: -2px;
+}
+
+/* Panel styles */
+@layer components {
+  .panel {
+    @apply bg-surface-800 border border-surface-700 rounded-lg shadow-lg;
+  }
+
+  .panel-header {
+    @apply px-3 py-2 border-b border-surface-700 font-medium text-sm text-surface-200;
+  }
+
+  .panel-content {
+    @apply p-3;
+  }
+
+  .input-field {
+    @apply w-full px-2 py-1.5 bg-surface-900 border border-surface-600 rounded text-sm
+           text-surface-100 placeholder-surface-500
+           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+           transition-all duration-150;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center px-3 py-1.5 rounded font-medium text-sm
+           transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2
+           focus:ring-offset-surface-900;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary-600 text-white hover:bg-primary-500 focus:ring-primary-500;
+  }
+
+  .btn-secondary {
+    @apply btn bg-surface-700 text-surface-100 hover:bg-surface-600 focus:ring-surface-500;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-surface-300 hover:bg-surface-700 hover:text-surface-100 focus:ring-surface-500;
+  }
+
+  .btn-icon {
+    @apply p-2 rounded-lg text-surface-400 hover:text-surface-100 hover:bg-surface-700
+           transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary-500;
+  }
+
+  .btn-icon-active {
+    @apply btn-icon bg-primary-600/20 text-primary-400;
+  }
+
+  .tooltip {
+    @apply absolute z-50 px-2 py-1 text-xs font-medium text-white bg-surface-900 
+           rounded shadow-lg border border-surface-700 pointer-events-none;
+  }
+
+  .divider {
+    @apply w-px h-6 bg-surface-600 mx-2;
+  }
+
+  .label {
+    @apply text-xs font-medium text-surface-400 uppercase tracking-wider;
+  }
+
+  /* Drag and Drop Indicators */
+  .drop-indicator-before::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    top: -1px;
+    height: 2px;
+    background: theme('colors.primary.500');
+    border-radius: 1px;
+  }
+
+  .drop-indicator-after::after {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: -1px;
+    height: 2px;
+    background: theme('colors.primary.500');
+    border-radius: 1px;
+  }
+
+  .drop-target-on {
+    outline: 2px solid theme('colors.primary.500');
+    outline-offset: -2px;
+    background: rgba(74, 158, 255, 0.1);
+  }
+
+  [draggable="true"] {
+    cursor: grab;
+  }
+
+  [draggable="true"]:active {
+    cursor: grabbing;
+  }
+}
+
+
+/* Animation utilities */
+@layer utilities {
+  .fade-enter {
+    opacity: 0;
+  }
+  
+  .fade-enter-active {
+    opacity: 1;
+    transition: opacity 150ms ease-out;
+  }
+}
