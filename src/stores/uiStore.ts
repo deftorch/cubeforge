@@ -1,4 +1,6 @@
 import { createStore } from 'solid-js/store';
+import { getInputContextManager } from '@/core/input/InputContextManager';
+import { InputContextId } from '@/core/interfaces';
 
 /**
  * Transform modes for the gizmo
@@ -123,14 +125,24 @@ export const uiActions = {
      * Toggle interaction mode (Object vs Edit)
      */
     toggleInteractionMode() {
-        setUIStore('interactionMode', prev => (prev === 'object' ? 'edit' : 'object'));
+        const newMode = uiStore.interactionMode === 'object' ? 'edit' : 'object';
+        this.setInteractionMode(newMode);
     },
 
     /**
      * Set interaction mode
+     * Also syncs with InputContextManager for context-aware input handling
      */
     setInteractionMode(mode: InteractionMode) {
         setUIStore('interactionMode', mode);
+
+        // Sync with InputContextManager
+        const contextManager = getInputContextManager();
+        if (mode === 'edit') {
+            contextManager.switchContext(InputContextId.OBJECT_MODE, InputContextId.EDIT_MODE);
+        } else {
+            contextManager.switchContext(InputContextId.EDIT_MODE, InputContextId.OBJECT_MODE);
+        }
     },
 
     /**

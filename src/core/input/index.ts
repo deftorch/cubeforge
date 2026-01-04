@@ -1,8 +1,17 @@
 export { KeyboardManager, getKeyboardManager } from './KeyboardManager';
 export type { ShortcutConfig } from './KeyboardManager';
+export { KeymapManager, getKeymapManager, resetKeymapManager } from './KeymapManager';
+export type { KeyBinding, KeymapEntry, KeymapConfig } from './KeymapManager';
 export { registerDefaultShortcuts, unregisterShortcuts } from './shortcuts';
 export { registerViewportShortcuts, unregisterViewportShortcuts } from './viewportShortcuts';
 export { InputDispatcher, getInputDispatcher, resetInputDispatcher } from './InputDispatcher';
+export { InputContextManager, getInputContextManager, resetInputContextManager } from './InputContextManager';
+export { OperatorRegistry, getOperatorRegistry, resetOperatorRegistry } from './OperatorRegistry';
+export { createOperatorCommand, captureOperatorUndoData } from './OperatorCommand';
+export type { OperatorUndoData } from './OperatorCommand';
 export { SelectionHandler } from './SelectionHandler';
 export { OrbitControlsHandler } from './OrbitControlsHandler';
 export { TransformControlsHandler } from './TransformControlsHandler';
+export { KeyboardHandler } from './KeyboardHandler';
+export { InputLogger } from './InputLogger';
+export type { LogLevel, LogEntry, ComponentLogger } from './InputLogger';

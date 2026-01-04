@@ -1,8 +1,42 @@
 /**
+ * InputEventResult - Enhanced return value for input handlers
+ * 
+ * Provides more expressive control over event propagation compared to boolean.
+ * 
+ * - CONSUMED: Event was fully handled, stop propagation to other handlers
+ * - PASS_THROUGH: Event was processed but should continue to other handlers
+ * - IGNORED: Handler didn't process this event at all
+ */
+export type InputEventResult = 'CONSUMED' | 'PASS_THROUGH' | 'IGNORED';
+
+/**
+ * Helper to check if result should stop propagation
+ */
+export function isEventConsumed(result: InputEventResult | boolean): boolean {
+    if (typeof result === 'boolean') return result;
+    return result === 'CONSUMED';
+}
+
+/**
+ * Helper to convert boolean to InputEventResult
+ */
+export function toEventResult(consumed: boolean): InputEventResult {
+    return consumed ? 'CONSUMED' : 'IGNORED';
+}
+
+/**
+ * Input handler result type - supports both boolean (legacy) and new result type
+ */
+export type InputHandlerResult = boolean | InputEventResult;
+
+/**
  * IInputHandler - Interface for all input handlers in the Input Dispatcher system
  * 
  * Handlers are processed in priority order (highest first).
- * Return `true` from event methods to consume the event and stop propagation.
+ * Return values:
+ * - `true` or `'CONSUMED'`: Stop propagation to other handlers
+ * - `false` or `'IGNORED'`: Handler didn't process, continue to next
+ * - `'PASS_THROUGH'`: Handler processed but allows others to also handle
  */
 export interface IInputHandler {
     /** Unique identifier for this handler */
@@ -31,32 +65,34 @@ export interface IInputHandler {
 
     // ============================================
     // MOUSE EVENTS
-    // Return true if event was consumed (stops propagation)
+    // Return true/'CONSUMED' to stop propagation
+    // Return 'PASS_THROUGH' to process but allow others
+    // Return false/'IGNORED' if not handled
     // ============================================
 
-    onMouseDown?(event: MouseEvent): boolean;
-    onMouseMove?(event: MouseEvent): boolean;
-    onMouseUp?(event: MouseEvent): boolean;
-    onClick?(event: MouseEvent): boolean;
-    onDoubleClick?(event: MouseEvent): boolean;
-    onWheel?(event: WheelEvent): boolean;
-    onContextMenu?(event: MouseEvent): boolean;
+    onMouseDown?(event: MouseEvent): InputHandlerResult;
+    onMouseMove?(event: MouseEvent): InputHandlerResult;
+    onMouseUp?(event: MouseEvent): InputHandlerResult;
+    onClick?(event: MouseEvent): InputHandlerResult;
+    onDoubleClick?(event: MouseEvent): InputHandlerResult;
+    onWheel?(event: WheelEvent): InputHandlerResult;
+    onContextMenu?(event: MouseEvent): InputHandlerResult;
 
     // ============================================
     // KEYBOARD EVENTS
     // ============================================
 
-    onKeyDown?(event: KeyboardEvent): boolean;
-    onKeyUp?(event: KeyboardEvent): boolean;
+    onKeyDown?(event: KeyboardEvent): InputHandlerResult;
+    onKeyUp?(event: KeyboardEvent): InputHandlerResult;
 
     // ============================================
     // DRAG EVENTS
     // ============================================
 
-    onDragEnter?(event: DragEvent): boolean;
-    onDragOver?(event: DragEvent): boolean;
-    onDragLeave?(event: DragEvent): boolean;
-    onDrop?(event: DragEvent): boolean;
+    onDragEnter?(event: DragEvent): InputHandlerResult;
+    onDragOver?(event: DragEvent): InputHandlerResult;
+    onDragLeave?(event: DragEvent): InputHandlerResult;
+    onDrop?(event: DragEvent): InputHandlerResult;
 
     // ============================================
     // LIFECYCLE
@@ -87,3 +123,4 @@ export const InputPriority = {
     /** Fallback handlers */
     FALLBACK: 5,
 } as const;
+

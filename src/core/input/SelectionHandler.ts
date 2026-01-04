@@ -1,6 +1,7 @@
 import type { IInputHandler } from '@/core/interfaces';
 import { InputPriority } from '@/core/interfaces';
 import type { SelectionManager } from '@/core/selection/SelectionManager';
+import { InputLogger, type ComponentLogger } from './InputLogger';
 
 /**
  * SelectionHandler - Default click-to-select behavior
@@ -15,21 +16,21 @@ export class SelectionHandler implements IInputHandler {
     readonly id = 'selection';
     readonly priority = InputPriority.SELECTION;
     enabled = true;
+    private logger: ComponentLogger = InputLogger.create('SelectionHandler');
 
-    constructor(private selectionManager: SelectionManager) { }
+    constructor(private selectionManager: SelectionManager) {
+        this.logger.debug('Initialized');
+    }
 
     /**
      * Handle click for selection
      */
     onClick(event: MouseEvent): boolean {
-        // Don't handle if transform controls are dragging
-        // This will be checked via the transform gizmo handler having higher priority
-
         // Delegate to SelectionManager
         this.selectionManager.handleClick(event);
+        this.logger.debug('Click handled', { x: event.clientX, y: event.clientY });
 
         // Return false to allow event to continue (other handlers may also need it)
-        // Selection doesn't consume the event, just uses it
         return false;
     }
 
@@ -45,6 +46,6 @@ export class SelectionHandler implements IInputHandler {
     }
 
     dispose(): void {
-        // No cleanup needed
+        this.logger.debug('Disposed');
     }
 }

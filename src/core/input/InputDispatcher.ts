@@ -1,4 +1,7 @@
 import type { IInputHandler } from '@/core/interfaces';
+import { isEventConsumed } from '@/core/interfaces';
+import type { InputContextManager } from './InputContextManager';
+import { InputLogger, type ComponentLogger } from './InputLogger';
 
 /**
  * InputDispatcher - Central event router for the Input System
@@ -26,6 +29,9 @@ export class InputDispatcher {
     private handlers: IInputHandler[] = [];
     private activeModal: IInputHandler | null = null;
     private debugMode = false;
+    private contextManager: InputContextManager | null = null;
+    private useContexts = false;
+    private logger: ComponentLogger = InputLogger.create('InputDispatcher');
 
     /**
      * Enable debug logging for event flow
@@ -35,13 +41,36 @@ export class InputDispatcher {
     }
 
     /**
+     * Set the InputContextManager for context-aware event routing
+     * When set and enabled, handlers are resolved from active contexts
+     */
+    setContextManager(manager: InputContextManager, enable = true): void {
+        this.contextManager = manager;
+        this.useContexts = enable;
+    }
+
+    /**
+     * Enable or disable context-based handler resolution
+     */
+    setUseContexts(enabled: boolean): void {
+        this.useContexts = enabled && this.contextManager !== null;
+    }
+
+    /**
+     * Get whether context-based routing is active
+     */
+    isUsingContexts(): boolean {
+        return this.useContexts && this.contextManager !== null;
+    }
+
+    /**
      * Register a handler with the dispatcher
      * Handlers are automatically sorted by priority (highest first)
      */
     register(handler: IInputHandler): void {
         // Prevent duplicate registration
         if (this.handlers.some(h => h.id === handler.id)) {
-            console.warn(`InputDispatcher: Handler "${handler.id}" is already registered`);
+            this.logger.warn('Handler already registered', { handlerId: handler.id });
             return;
         }
 
@@ -50,9 +79,10 @@ export class InputDispatcher {
 
         handler.onRegister?.();
 
-        if (this.debugMode) {
-            console.log(`InputDispatcher: Registered "${handler.id}" (priority: ${handler.priority})`);
-        }
+        this.logger.debug('Handler registered', {
+            handlerId: handler.id,
+            priority: handler.priority
+        });
     }
 
     /**
@@ -61,7 +91,7 @@ export class InputDispatcher {
     unregister(handler: IInputHandler): void {
         const index = this.handlers.findIndex(h => h.id === handler.id);
         if (index === -1) {
-            console.warn(`InputDispatcher: Handler "${handler.id}" is not registered`);
+            this.logger.warn('Handler not registered', { handlerId: handler.id });
             return;
         }
 
@@ -74,9 +104,7 @@ export class InputDispatcher {
 
         handler.onUnregister?.();
 
-        if (this.debugMode) {
-            console.log(`InputDispatcher: Unregistered "${handler.id}"`);
-        }
+        this.logger.debug('Handler unregistered', { handlerId: handler.id });
     }
 
     /**
@@ -243,12 +271,16 @@ export class InputDispatcher {
 
     /**
      * Generic dispatch method for any event type
+     * Supports both boolean (legacy) and InputEventResult return values
      */
     private dispatchGeneric<K extends keyof IInputHandler>(
         methodName: K,
         event: Event
     ): boolean {
-        for (const handler of this.handlers) {
+        // Get handlers - either from context manager or direct registration
+        const handlersToProcess = this.getActiveHandlerList();
+
+        for (const handler of handlersToProcess) {
             if (!this.shouldReceiveEvent(handler)) continue;
 
             const method = handler[methodName];
@@ -256,25 +288,35 @@ export class InputDispatcher {
 
             try {
                 // @ts-expect-error - We know the method signature is correct
-                const consumed = method.call(handler, event);
+                const result = method.call(handler, event);
 
-                if (consumed) {
-                    if (this.debugMode) {
-                        console.log(
-                            `InputDispatcher: "${handler.id}" consumed ${methodName}`
-                        );
-                    }
+                // Use isEventConsumed to check both boolean and InputEventResult
+                if (isEventConsumed(result)) {
+                    this.logger.debug('Event consumed', {
+                        handlerId: handler.id,
+                        method: methodName
+                    });
                     return true;
                 }
             } catch (error) {
-                console.error(
-                    `InputDispatcher: Error in "${handler.id}.${methodName}":`,
-                    error
-                );
+                this.logger.error(`Handler error in ${methodName}`, error as Error, {
+                    handlerId: handler.id
+                });
             }
         }
 
         return false;
+    }
+
+    /**
+     * Get the list of handlers to process
+     * Uses context manager if enabled, otherwise uses direct registration
+     */
+    private getActiveHandlerList(): IInputHandler[] {
+        if (this.useContexts && this.contextManager) {
+            return this.contextManager.getActiveHandlers();
+        }
+        return this.handlers;
     }
 
     /**

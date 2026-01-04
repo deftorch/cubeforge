@@ -61,10 +61,13 @@ export class KeyboardManager {
     }
 
     /**
-     * Handle keydown event
+     * Handle keyboard event - can be called directly or via InputDispatcher
+     * 
+     * @param event - The keyboard event to handle
+     * @returns true if the event was handled (shortcut executed), false otherwise
      */
-    private handleKeyDown = (event: KeyboardEvent): void => {
-        if (!this.enabled) return;
+    public handleEvent(event: KeyboardEvent): boolean {
+        if (!this.enabled) return false;
 
         // Check if typing in input field
         const target = event.target as HTMLElement;
@@ -82,18 +85,28 @@ export class KeyboardManager {
         });
 
         const config = this.shortcuts.get(shortcutKey);
-        if (!config) return;
+        if (!config) return false;
 
         // Skip if in input field and not allowed
-        if (isInInput && !config.allowInInput) return;
+        if (isInInput && !config.allowInInput) return false;
 
         event.preventDefault();
 
         try {
             config.action();
+            return true; // Event was handled
         } catch (error) {
             console.error(`Error executing shortcut "${shortcutKey}":`, error);
+            return false;
         }
+    }
+
+    /**
+     * Legacy handler for direct window attachment
+     * @deprecated Use handleEvent() via InputDispatcher instead
+     */
+    private handleKeyDown = (event: KeyboardEvent): void => {
+        this.handleEvent(event);
     };
 
     /**

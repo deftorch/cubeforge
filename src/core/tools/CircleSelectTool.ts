@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { getSceneManager } from '@/core/scene/SceneManager';
 import { selectionActions } from '@/stores/selectionStore';
 import type { IInputHandler } from '@/core/interfaces';
-import { InputPriority } from '@/core/interfaces';
+import { InputPriority, InputContextId } from '@/core/interfaces';
 import type { OrbitControlsHandler } from '@/core/input/OrbitControlsHandler';
+import { getInputContextManager } from '@/core/input/InputContextManager';
 
 /**
  * CircleSelectTool - Paint selection with adjustable radius
@@ -90,6 +91,9 @@ export class CircleSelectTool implements IInputHandler {
         this.enabled = true;
         this.paintedIds.clear();
 
+        // Enable TOOL_ACTIVE context
+        getInputContextManager().enableContext(InputContextId.TOOL_ACTIVE);
+
         // Disable orbit controls to prevent camera rotation during selection
         this.orbitControlsHandler?.disable();
 
@@ -107,6 +111,9 @@ export class CircleSelectTool implements IInputHandler {
         this.enabled = false;
         this.isPainting = false;
         this.paintedIds.clear();
+
+        // Disable TOOL_ACTIVE context
+        getInputContextManager().disableContext(InputContextId.TOOL_ACTIVE);
 
         // Re-enable orbit controls
         this.orbitControlsHandler?.enable();

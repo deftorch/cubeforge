@@ -1,4 +1,4 @@
-import { getKeyboardManager } from '@/core/input/KeyboardManager';
+import { getKeymapManager } from '@/core/input/KeymapManager';
 import { getViewController } from '@/core/viewport/ViewController';
 import { getViewportShading } from '@/core/viewport/ViewportShading';
 import { getPivotController } from '@/core/transform/PivotController';
@@ -9,44 +9,47 @@ import { sceneActions } from '@/stores/sceneStore';
 import { uiActions } from '@/stores/uiStore';
 
 /**
- * Register viewport-specific keyboard shortcuts
+ * Register viewport-specific keyboard shortcuts using KeymapManager
  * 
  * These shortcuts are related to viewport navigation, selection tools,
- * and viewport display modes. Extracted from Viewport.tsx for Single Responsibility.
+ * and viewport display modes.
  */
 export function registerViewportShortcuts(): void {
-    const keyboardManager = getKeyboardManager();
+    const keymapManager = getKeymapManager();
 
     // ============================================
-    // SELECTION TOOLS
+    // SELECTION TOOLS (category: 'tools')
     // ============================================
 
-    // Box select activation (B)
-    keyboardManager.register({
-        key: 'b',
+    keymapManager.registerAction({
+        actionId: 'tools.box_select',
+        description: 'Box Select tool',
+        category: 'tools',
+        defaultBinding: { key: 'b' },
         action: () => {
             const boxSelectTool = getBoxSelectTool();
             boxSelectTool.activate();
             uiActions.setStatus('Box Select: Drag to select');
         },
-        description: 'Box Select tool',
     });
 
-    // Circle select activation (C)
-    keyboardManager.register({
-        key: 'c',
+    keymapManager.registerAction({
+        actionId: 'tools.circle_select',
+        description: 'Circle Select tool',
+        category: 'tools',
+        defaultBinding: { key: 'c' },
         action: () => {
             const circleSelectTool = getCircleSelectTool();
             circleSelectTool.activate();
             uiActions.setStatus('Circle Select: LMB to add, RMB to remove, Scroll to resize');
         },
-        description: 'Circle Select tool',
     });
 
-    // Invert selection (Ctrl+I)
-    keyboardManager.register({
-        key: 'i',
-        ctrl: true,
+    keymapManager.registerAction({
+        actionId: 'selection.invert',
+        description: 'Invert selection',
+        category: 'selection',
+        defaultBinding: { key: 'i', ctrl: true },
         action: () => {
             const allIds = sceneActions.getAllCubes().map(c => c.id);
             const currentSelected = selectionActions.getSelectedIds();
@@ -54,86 +57,94 @@ export function registerViewportShortcuts(): void {
             selectionActions.selectMultiple(inverted);
             uiActions.setStatus('Selection Inverted');
         },
-        description: 'Invert selection',
     });
 
     // ============================================
-    // VIEW PRESETS
+    // VIEW PRESETS (category: 'view')
     // ============================================
 
-    // Front view (1) / Back view (Ctrl+1)
-    keyboardManager.register({
-        key: '1',
+    keymapManager.registerAction({
+        actionId: 'view.front',
+        description: 'Front View',
+        category: 'view',
+        defaultBinding: { key: '1' },
         action: () => {
             getViewController().setView('front');
             uiActions.setStatus('Front View');
         },
-        description: 'Front View',
     });
 
-    keyboardManager.register({
-        key: '1',
-        ctrl: true,
+    keymapManager.registerAction({
+        actionId: 'view.back',
+        description: 'Back View',
+        category: 'view',
+        defaultBinding: { key: '1', ctrl: true },
         action: () => {
             getViewController().setView('back');
             uiActions.setStatus('Back View');
         },
-        description: 'Back View',
     });
 
-    // Right view (3) / Left view (Ctrl+3)
-    keyboardManager.register({
-        key: '3',
+    keymapManager.registerAction({
+        actionId: 'view.right',
+        description: 'Right View',
+        category: 'view',
+        defaultBinding: { key: '3' },
         action: () => {
             getViewController().setView('right');
             uiActions.setStatus('Right View');
         },
-        description: 'Right View',
     });
 
-    keyboardManager.register({
-        key: '3',
-        ctrl: true,
+    keymapManager.registerAction({
+        actionId: 'view.left',
+        description: 'Left View',
+        category: 'view',
+        defaultBinding: { key: '3', ctrl: true },
         action: () => {
             getViewController().setView('left');
             uiActions.setStatus('Left View');
         },
-        description: 'Left View',
     });
 
-    // Top view (7) / Bottom view (Ctrl+7)
-    keyboardManager.register({
-        key: '7',
+    keymapManager.registerAction({
+        actionId: 'view.top',
+        description: 'Top View',
+        category: 'view',
+        defaultBinding: { key: '7' },
         action: () => {
             getViewController().setView('top');
             uiActions.setStatus('Top View');
         },
-        description: 'Top View',
     });
 
-    keyboardManager.register({
-        key: '7',
-        ctrl: true,
+    keymapManager.registerAction({
+        actionId: 'view.bottom',
+        description: 'Bottom View',
+        category: 'view',
+        defaultBinding: { key: '7', ctrl: true },
         action: () => {
             getViewController().setView('bottom');
             uiActions.setStatus('Bottom View');
         },
-        description: 'Bottom View',
     });
 
-    // Camera view (0)
-    keyboardManager.register({
-        key: '0',
+    keymapManager.registerAction({
+        actionId: 'view.camera',
+        description: 'Camera View',
+        category: 'view',
+        defaultBinding: { key: '0' },
         action: () => {
             getViewController().setView('camera');
             uiActions.setStatus('Camera View');
         },
-        description: 'Camera View',
     });
 
-    // Orthographic/Perspective toggle (5)
-    keyboardManager.register({
-        key: '5',
+    keymapManager.registerAction({
+        actionId: 'view.toggle_projection',
+        description: 'Toggle Orthographic/Perspective',
+        category: 'view',
+        defaultBinding: { key: '5' },
         action: () => {
             const viewController = getViewController();
             viewController.toggleProjection();
@@ -143,81 +154,83 @@ export function registerViewportShortcuts(): void {
                     : 'Orthographic'
             );
         },
-        description: 'Toggle Orthographic/Perspective',
     });
 
     // ============================================
-    // VIEWPORT NAVIGATION
+    // VIEWPORT NAVIGATION (category: 'view')
     // ============================================
 
-    // Zoom to selection (.)
-    keyboardManager.register({
-        key: '.',
+    keymapManager.registerAction({
+        actionId: 'view.zoom_selection',
+        description: 'Zoom to Selection',
+        category: 'view',
+        defaultBinding: { key: '.' },
         action: () => {
             getViewController().zoomToSelection();
             uiActions.setStatus('Zoom to Selection');
         },
-        description: 'Zoom to Selection',
     });
 
-    // Zoom to all (Home)
-    keyboardManager.register({
-        key: 'Home',
+    keymapManager.registerAction({
+        actionId: 'view.zoom_all',
+        description: 'Zoom to All',
+        category: 'view',
+        defaultBinding: { key: 'Home' },
         action: () => {
             getViewController().zoomToAll();
             uiActions.setStatus('Zoom to All');
         },
-        description: 'Zoom to All',
     });
 
     // ============================================
-    // VIEWPORT SHADING
+    // VIEWPORT SHADING (category: 'view')
     // ============================================
 
-    // X-Ray toggle (Alt+Z)
-    keyboardManager.register({
-        key: 'z',
-        alt: true,
+    keymapManager.registerAction({
+        actionId: 'view.toggle_xray',
+        description: 'Toggle X-Ray mode',
+        category: 'view',
+        defaultBinding: { key: 'z', alt: true },
         action: () => {
             const shading = getViewportShading();
             shading.toggleXRay();
             uiActions.setStatus(`X-Ray: ${shading.isXRayEnabled() ? 'ON' : 'OFF'}`);
         },
-        description: 'Toggle X-Ray mode',
     });
 
-    // Wireframe toggle (Z)
-    keyboardManager.register({
-        key: 'z',
+    keymapManager.registerAction({
+        actionId: 'view.toggle_wireframe',
+        description: 'Toggle Wireframe mode',
+        category: 'view',
+        defaultBinding: { key: 'z' },
         action: () => {
             const shading = getViewportShading();
             shading.toggleWireframe();
             uiActions.setStatus(`Shading: ${shading.getModeDisplayName()}`);
         },
-        description: 'Toggle Wireframe mode',
     });
 
     // ============================================
-    // PIVOT / TRANSFORM
+    // PIVOT / TRANSFORM (category: 'transform')
     // ============================================
 
-    // Pivot mode cycle (,)
-    keyboardManager.register({
-        key: ',',
+    keymapManager.registerAction({
+        actionId: 'transform.cycle_pivot',
+        description: 'Cycle Pivot mode',
+        category: 'transform',
+        defaultBinding: { key: ',' },
         action: () => {
             const pivotController = getPivotController();
             pivotController.cycleMode();
             uiActions.setStatus(`Pivot: ${pivotController.getModeDisplayName()}`);
         },
-        description: 'Cycle Pivot mode',
     });
 }
 
 /**
  * Cleanup function for viewport shortcuts
- * Note: Individual shortcuts are cleared by the main unregisterShortcuts
  */
 export function unregisterViewportShortcuts(): void {
-    // Shortcuts are cleared via main keyboard manager clear()
-    // This function exists for symmetry and future cleanup needs
+    // Shortcuts are cleaned up via keymapManager.dispose()
 }
+

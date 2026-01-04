@@ -16,10 +16,16 @@ import {
     SelectionHandler,
     OrbitControlsHandler,
     TransformControlsHandler,
+    KeyboardHandler,
+    getKeyboardManager,
+    getOperatorRegistry,
+    getInputContextManager,
 } from '@/core/input';
+import { TransformOperator } from '@/core/operators';
 
 import type { IMaterialService } from '@/core/interfaces';
 import type { IEventBus } from '@/core/interfaces';
+import { InputContextId } from '@/core/interfaces';
 
 /**
  * CoreContext - Service Container for Dependency Injection
@@ -50,6 +56,12 @@ export class CoreContext {
     public readonly selectionHandler: SelectionHandler;
     public readonly orbitControlsHandler: OrbitControlsHandler;
     public readonly transformControlsHandler: TransformControlsHandler;
+    public readonly keyboardHandler: KeyboardHandler;
+
+    // Transform operators (modal)
+    public readonly translateOperator: TransformOperator;
+    public readonly rotateOperator: TransformOperator;
+    public readonly scaleOperator: TransformOperator;
 
     private static instance: CoreContext;
 
@@ -112,6 +124,7 @@ export class CoreContext {
         this.selectionHandler = new SelectionHandler(this.selectionManager);
         this.orbitControlsHandler = new OrbitControlsHandler(this.sceneManager.orbitControls);
         this.transformControlsHandler = new TransformControlsHandler(this.sceneManager.transformControls);
+        this.keyboardHandler = new KeyboardHandler(getKeyboardManager());
 
         // Configure transform controls handler
         this.transformControlsHandler.setDispatcher(this.inputDispatcher);
@@ -127,6 +140,48 @@ export class CoreContext {
         this.inputDispatcher.register(this.circleSelectTool);          // Priority: 75 (TOOL)
         this.inputDispatcher.register(this.selectionHandler);          // Priority: 50 (SELECTION)
         this.inputDispatcher.register(this.orbitControlsHandler);      // Priority: 20 (NAVIGATION)
+        this.inputDispatcher.register(this.keyboardHandler);           // Priority: 5 (FALLBACK)
+
+        // Layer 8: Transform Operators (Modal)
+        this.translateOperator = new TransformOperator('translate');
+        this.rotateOperator = new TransformOperator('rotate');
+        this.scaleOperator = new TransformOperator('scale');
+
+        // Configure operators with dispatcher
+        this.translateOperator.setDispatcher(this.inputDispatcher);
+        this.rotateOperator.setDispatcher(this.inputDispatcher);
+        this.scaleOperator.setDispatcher(this.inputDispatcher);
+
+        // Register with OperatorRegistry
+        const registry = getOperatorRegistry();
+        registry.register(this.translateOperator);
+        registry.register(this.rotateOperator);
+        registry.register(this.scaleOperator);
+
+        // Register operators with InputDispatcher (they become active when invoked)
+        this.inputDispatcher.register(this.translateOperator);
+        this.inputDispatcher.register(this.rotateOperator);
+        this.inputDispatcher.register(this.scaleOperator);
+
+        // Layer 9: Context-Aware Input System
+        // Enable context-based routing for mode-specific shortcuts
+        const contextManager = getInputContextManager();
+        this.inputDispatcher.setContextManager(contextManager, false);
+
+        // Register handlers to their appropriate contexts
+        // GLOBAL handlers work in all modes
+        contextManager.registerHandler(this.keyboardHandler, InputContextId.GLOBAL);
+        contextManager.registerHandler(this.orbitControlsHandler, InputContextId.GLOBAL);
+        contextManager.registerHandler(this.selectionHandler, InputContextId.GLOBAL);
+
+        // OBJECT_MODE handlers only work in object mode
+        contextManager.registerHandler(this.translateOperator, InputContextId.OBJECT_MODE);
+        contextManager.registerHandler(this.rotateOperator, InputContextId.OBJECT_MODE);
+        contextManager.registerHandler(this.scaleOperator, InputContextId.OBJECT_MODE);
+        contextManager.registerHandler(this.transformControlsHandler, InputContextId.OBJECT_MODE);
+
+        // TOOL_ACTIVE handlers (tools self-register when activated)
+        // BoxSelectTool and CircleSelectTool already handle this internally
     }
 
     public static getInstance(): CoreContext {

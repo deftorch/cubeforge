@@ -25,6 +25,7 @@ export const ResizeHandle: Component<ResizeHandleProps> = (props) => {
 
     const handleMouseDown = (e: MouseEvent) => {
         e.preventDefault();
+        e.stopPropagation();
         startX = e.clientX;
         setIsDragging(true);
 
@@ -67,26 +68,27 @@ export const ResizeHandle: Component<ResizeHandleProps> = (props) => {
     onCleanup(() => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
+        // Also restore body styles in case component unmounts during drag
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
     });
 
     return (
         <div
             class={`
-                w-1 cursor-ew-resize transition-colors duration-150
+                w-2 h-full cursor-ew-resize transition-colors duration-150 flex-shrink-0
                 ${isDragging()
                     ? 'bg-primary-500'
                     : isHovered()
                         ? 'bg-primary-500/50'
-                        : 'bg-transparent hover:bg-surface-600'
+                        : 'bg-surface-700 hover:bg-surface-600'
                 }
             `}
             onMouseDown={handleMouseDown}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             title="Drag to resize"
-        >
-            {/* Invisible wider hit area for easier grabbing */}
-            <div class="absolute inset-y-0 -left-1 -right-1" />
-        </div>
+        />
     );
 };
+

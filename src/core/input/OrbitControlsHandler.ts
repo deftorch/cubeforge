@@ -1,6 +1,7 @@
 import type { IInputHandler } from '@/core/interfaces';
 import { InputPriority } from '@/core/interfaces';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { InputLogger, type ComponentLogger } from './InputLogger';
 
 /**
  * OrbitControlsHandler - Wrapper for Three.js OrbitControls
@@ -18,6 +19,7 @@ export class OrbitControlsHandler implements IInputHandler {
 
     private orbitControls: OrbitControls;
     private wasEnabled = true;
+    private logger: ComponentLogger = InputLogger.create('OrbitControls');
 
     constructor(orbitControls: OrbitControls) {
         this.orbitControls = orbitControls;
@@ -30,6 +32,7 @@ export class OrbitControlsHandler implements IInputHandler {
     disable(): void {
         this.wasEnabled = this.orbitControls.enabled;
         this.orbitControls.enabled = false;
+        this.logger.debug('Disabled');
     }
 
     /**
@@ -37,6 +40,7 @@ export class OrbitControlsHandler implements IInputHandler {
      */
     enable(): void {
         this.orbitControls.enabled = this.wasEnabled;
+        this.logger.debug('Enabled', { wasEnabled: this.wasEnabled });
     }
 
     /**

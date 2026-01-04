@@ -6,6 +6,9 @@ export type { IViewportShading } from './IViewportShading';
 export type { ITransformService } from './ITransformService';
 export type { IMaterialService } from './IMaterialService';
 export type { IEventBus } from './IEventBus';
-export type { IInputHandler } from './IInputHandler';
-export { InputPriority } from './IInputHandler';
-
+export type { IInputHandler, InputEventResult, InputHandlerResult } from './IInputHandler';
+export { InputPriority, isEventConsumed, toEventResult } from './IInputHandler';
+export type { IInputContext, IContextualHandler, InputContextIdType } from './IInputContext';
+export { InputContextId } from './IInputContext';
+export type { IOperator, OperatorResult, OperatorType } from './IOperator';
+export { isOperator } from './IOperator';
