@@ -1,6 +1,7 @@
 import { Component, createMemo } from 'solid-js';
 import { NavigationGizmo } from './NavigationGizmo';
 import { ViewportHeader, ViewportFooter } from './ViewportControls';
+import { StatisticsOverlay } from './StatisticsOverlay';
 import { sceneActions } from '@/stores/sceneStore';
 import { selectionStore } from '@/stores/selectionStore';
 
@@ -15,6 +16,9 @@ export const ViewportOverlay: Component = () => {
         <div class="absolute inset-0 pointer-events-none z-10 overflow-hidden">
             {/* Header with shading controls */}
             <ViewportHeader />
+
+            {/* Statistics Overlay */}
+            <StatisticsOverlay cubeCount={cubeCount()} />
 
             {/* Navigation gizmo - top right */}
             <NavigationGizmo />

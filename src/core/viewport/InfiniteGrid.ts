@@ -190,6 +190,8 @@ export class InfiniteGrid extends THREE.Mesh {
     };
 
     private currentPlane: GridPlane = 'xz';
+    private userScale: number = 1.0;
+    private userSubdivisions: number = 10;
 
     constructor(options: InfiniteGridOptions = {}) {
         const {
@@ -328,10 +330,16 @@ export class InfiniteGrid extends THREE.Mesh {
             }
         }
 
-        // Adaptive grid sizing
-        const level = Math.floor(Math.log10(Math.max(cameraDistance, 1)));
-        const size1 = Math.pow(10, level - 1);
-        const size2 = Math.pow(10, level);
+        // Adaptive grid sizing with user scale and subdivisions
+        const step = Math.max(2, this.userSubdivisions); // Minimum step of 2 to avoid infinite loop/log issues
+        const normalizedDist = Math.max(cameraDistance, 0.001) / this.userScale;
+
+        // Calculate level based on subdivisions step instead of fixed 10
+        const level = Math.floor(Math.log(Math.max(normalizedDist, 1)) / Math.log(step));
+
+        // Calculate sizes and apply user scale
+        const size1 = Math.pow(step, level - 1) * this.userScale;
+        const size2 = Math.pow(step, level) * this.userScale;
 
         this.uniforms.uSize1.value = size1;
         this.uniforms.uSize2.value = size2;
@@ -371,12 +379,17 @@ export class InfiniteGrid extends THREE.Mesh {
         showAxisX?: boolean;
         showAxisY?: boolean;
         showAxisZ?: boolean;
+        gridScale?: number;
+        gridSubdivisions?: number;
     }): void {
         if (options.showGrid !== undefined) this.uniforms.uShowGrid.value = options.showGrid;
         if (options.showFloor !== undefined) this.uniforms.uShowFloor.value = options.showFloor;
         if (options.showAxisX !== undefined) this.uniforms.uShowAxisX.value = options.showAxisX;
         if (options.showAxisY !== undefined) this.uniforms.uShowAxisY.value = options.showAxisY;
         if (options.showAxisZ !== undefined) this.uniforms.uShowAxisZ.value = options.showAxisZ;
+
+        if (options.gridScale !== undefined) this.userScale = Math.max(0.001, options.gridScale);
+        if (options.gridSubdivisions !== undefined) this.userSubdivisions = Math.max(1, Math.floor(options.gridSubdivisions));
     }
 
     /**

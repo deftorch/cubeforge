@@ -30,6 +30,7 @@ export class ViewportShading {
     // Overlay state
     private wireframeOverlayEnabled = false;
     private wireframeOverlayOpacity = 0.5;
+    private geometryOpacity = 1.0;
 
     // Store original material state for restoration
     private originalStates: Map<string, OriginalMaterialState> = new Map();
@@ -122,6 +123,18 @@ export class ViewportShading {
             });
             this.overlayWireframes.clear();
         }
+    }
+
+    /**
+     * Set Geometry Opacity (global opacity for solid geometry)
+     */
+    setGeometryOpacity(opacity: number): void {
+        if (this.geometryOpacity === opacity) return;
+        this.geometryOpacity = opacity;
+
+        const sceneManager = getSceneManager();
+        const meshes = sceneManager.getAllMeshes();
+        meshes.forEach(mesh => this.applyModeToMesh(mesh, this.currentMode));
     }
 
     /**
@@ -299,9 +312,17 @@ export class ViewportShading {
             // Restore to fully opaque (unless x-ray is enabled)
             if (!this.xRayEnabled) {
                 const original = this.originalStates.get(mesh.userData.cubeId);
-                mesh.material.opacity = original?.opacity ?? 1.0;
-                mesh.material.transparent = original?.transparent ?? false;
-                mesh.material.depthWrite = original?.depthWrite ?? true;
+                // Use geometry opacity from overlays
+                const baseOpacity = original?.opacity ?? 1.0;
+                mesh.material.opacity = baseOpacity * this.geometryOpacity;
+
+                // Enable transparency if opacity < 1.0
+                const isTransparent = (original?.transparent ?? false) || this.geometryOpacity < 1.0;
+                mesh.material.transparent = isTransparent;
+
+                // Disable depth write if transparent to avoid occlusion issues,
+                // but usually we want it enabled for solid unless very transparent
+                mesh.material.depthWrite = original?.depthWrite ?? (!isTransparent || this.geometryOpacity > 0.9);
             }
             mesh.material.needsUpdate = true;
         }

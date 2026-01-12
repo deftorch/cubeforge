@@ -8,13 +8,13 @@ interface CheckboxProps extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, 
 
 export const Checkbox: Component<CheckboxProps> = (props) => {
     return (
-        <label class="flex items-center gap-2 cursor-pointer select-none text-xs text-surface-200 hover:text-white transition-colors">
+        <label class={`flex items-center gap-2 select-none text-xs text-surface-200 transition-colors ${props.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:text-white'}`}>
             <div class="relative flex items-center">
                 <input
                     type="checkbox"
                     class="peer appearance-none w-3.5 h-3.5 border border-surface-500 rounded bg-surface-800 
                            checked:bg-primary-600 checked:border-primary-600 focus:outline-none focus:ring-1 focus:ring-primary-500/50
-                           transition-colors"
+                           transition-colors disabled:cursor-not-allowed"
                     checked={props.checked}
                     onChange={(e) => props.onChange?.(e.currentTarget.checked)}
                     {...props}

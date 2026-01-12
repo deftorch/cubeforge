@@ -105,17 +105,18 @@ export const ViewportHeader: Component = () => {
         <div class="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-surface-900/90 to-transparent 
                 flex items-center px-4 gap-4 pointer-events-auto z-20">
             {/* View preset indicator */}
-            <div class="flex items-center gap-2">
-                <span class="text-xs text-surface-400">View:</span>
-                <span class="text-xs font-medium text-surface-200 uppercase">
-                    {viewController.getCurrentPreset()}
-                </span>
-                <span class="text-xs text-surface-500">
-                    ({viewController.getProjectionType() === 'perspective' ? 'Persp' : 'Ortho'})
-                </span>
-            </div>
-
-            <div class="w-px h-4 bg-surface-700" />
+            <Show when={uiStore.overlays.showTextInfo}>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-surface-400">View:</span>
+                    <span class="text-xs font-medium text-surface-200 uppercase">
+                        {viewController.getCurrentPreset()}
+                    </span>
+                    <span class="text-xs text-surface-500">
+                        ({viewController.getProjectionType() === 'perspective' ? 'Persp' : 'Ortho'})
+                    </span>
+                </div>
+                <div class="w-px h-4 bg-surface-700" />
+            </Show>
 
             {/* Shading mode selector */}
             <div class="relative">
