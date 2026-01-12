@@ -139,11 +139,143 @@ export class HierarchyManager {
     }
 
     /**
-     * Get direct children of a cube
+     * Reorder a cube relative to a target
      */
-    getChildren(parentId: string): Cube[] {
+    reorderCube(
+        cubeId: string,
+        targetId: string,
+        position: 'before' | 'after'
+    ): void {
+        const cube = sceneActions.getCube(cubeId);
+        const target = sceneActions.getCube(targetId);
+        if (!cube || !target) return;
+
+        // Only allow reordering within same layer (simplified)
+        if (cube.layerId !== target.layerId) return;
+
+        // Get current IDs in layer to find indices
+        // We need direct access to store state here strictly speaking, 
+        // but since we are in a core manager we can import store?
+        // HierarchyManager imports sceneActions. We might need sceneStore export or getter.
+        // sceneStore is exported from sceneStore.ts.
+
+        // For now, let's assume we can get the layer definition via action or import.
+        const layer = sceneStore.getState().layers[cube.layerId];
+        if (!layer) {
+            console.warn(`Layer ${cube.layerId} not found for reordering.`);
+            return;
+        }
+
+        const targetIndex = layer.cubeIds.indexOf(targetId);
+        if (targetIndex === -1) {
+            console.warn(`Target cube ${targetId} not found in layer ${cube.layerId} cubeIds.`);
+            return;
+        }
+
+        let newIndex = targetIndex;
+        if (position === 'after') {
+            newIndex = targetIndex + 1;
+        }
+
+        // Adjust index if the cube being moved is currently before the target
+        const currentIndex = layer.cubeIds.indexOf(cubeId);
+        if (currentIndex !== -1 && currentIndex < newIndex) {
+            newIndex--;
+            toIndex += 1;
+        }
+
+        // Correction: if moving downwards (from < to), removing first shifts indices down, 
+        // so toIndex needs adjustment if we insert after.
+        // Actually splice handling in store handles insertion. 
+        // If we want to insert AT `toIndex` (which is now the index of the slot we want to occupy),
+        // we just pass that index. 
+        // Example: [A, B, C]. Move A after B. Target B (index 1). After -> toIndex = 2.
+        // Remove A -> [B, C]. Insert at 2 -> [B, C, A]. Correct.
+        // Example: [A, B, C]. Move C before B. Target B (index 1). Before -> toIndex = 1.
+        // Remove C -> [A, B]. Insert at 1 -> [A, C, B]. Correct.
+        // But `reorderCubeInLayer` implementation takes `toIndex`.
+        // Does it handle the "remove first" shift?
+        // My implementation: remove, THEN insert.
+        // So `toIndex` should be the index *after* removal.
+        // If from < to: [A, B, C], A->C (index 2). Remove A (0). [B, C]. Insert at 2? [B, C, A]. Yea.
+        // But `toIndex` was calculated on *original* array.
+        // If moving A (0) to 2 (C). Target C is 2.
+        // If from < to, we effectively shift items down. The target index in the *new* array is `toIndex - 1`?
+        // Let's rely on standard splicing logic:
+        // If from < to, we need to decrement toIndex by 1 because removing 'from' shifts everything above it down.
+
+        if (fromIndex < toIndex) {
+            toIndex -= 1;
+        }
+
+        sceneActions.reorderCubeInLayer(cube.layerId, cubeId, toIndex);
+
+        // Record undo?
+        // This is a manager method. historyActions usually called here?
+        // Yes, similar to parentCube.
+        historyActions.execute({
+            id: generateUUID(),
+            description: `Reorder ${cube.name}`,
+            execute: () => {
+                // idempotent-ish if called again with absolute indices, but here we calculate dynamically.
+                // We should capture the EXACT indices for redo.
+                // Re-calculating in lambda might be risky if state changed.
+                // But `execute` runs immediately.
+                // The reorderCubeInLayer call above does it.
+            },
+            undo: () => {
+                sceneActions.reorderCubeInLayer(cube.layerId, cubeId, fromIndex);
+            },
+            timestamp: Date.now(),
+        });
+    }
+
+    /**
+     * Get direct children of a cube, sorted by layer order
+     */
+    getChildren(parentId: string | undefined): Cube[] {
         const allCubes = sceneActions.getAllCubes();
-        return allCubes.filter(c => c.parentId === parentId);
+        const children = allCubes.filter(c => c.parentId === parentId);
+
+        if (children.length === 0) return [];
+
+        // Determine the layer to use for sorting
+        let layerId: string | undefined;
+        if (parentId === undefined) {
+            // For top-level cubes, use the default scene layer (assuming one exists or is handled)
+            // This might need refinement if multiple top-level layers are possible
+            const state = sceneActions.getState(); // Use sceneActions.getState()
+            const defaultLayer = Object.values(state.layers).find(l => l.name === 'Scene'); // Or some other default logic
+            layerId = defaultLayer?.id;
+        } else {
+            const parentCube = sceneActions.getCube(parentId);
+            layerId = parentCube?.layerId;
+        }
+
+        if (!layerId) {
+            // If no layerId can be determined, return unsorted children
+            return children;
+        }
+
+        const layer = sceneStore.getState().layers[layerId];
+        if (!layer) {
+            return children; // Layer not found, return unsorted
+        }
+
+        // Sort children based on their index in the layer's cubeIds array
+        const sortedChildren = [...children].sort((a, b) => {
+            const indexA = layer.cubeIds.indexOf(a.id);
+            const indexB = layer.cubeIds.indexOf(b.id);
+
+            // Handle cases where a cube might not be in the layer.cubeIds (shouldn't happen if logic is consistent)
+            if (indexA === -1 && indexB === -1) return 0;
+            if (indexA === -1) return 1; // Push to end
+            if (indexB === -1) return -1; // Push to end
+
+            return indexA - indexB;
+        });
+
+        return sortedChildren;
     }
 
     /**

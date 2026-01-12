@@ -1,4 +1,4 @@
-import { Component, createSignal, createEffect, onMount, onCleanup, Show } from 'solid-js';
+import { Component, createSignal, createEffect, Show } from 'solid-js';
 import { hexToHsv, hsvToHex, hexToRgb, rgbToHex, clamp } from '@/utils/colorUtils';
 import { ColorWheel } from './ColorWheel';
 import { HorizontalSlider } from './HorizontalSlider';
@@ -16,7 +16,7 @@ type ColorMode = 'RGB' | 'HSV' | 'Hex';
 
 /**
  * Blender-style color picker with:
- * - Horizontal color bar (click to open popup)
+ * - Horizontal color bar (click to expand inline)
  * - Circular color wheel
  * - RGB/HSV/Hex tabs
  * - Horizontal sliders for values
@@ -28,8 +28,6 @@ export const ColorPicker: Component<ColorPickerProps> = (props) => {
     const [colorMode, setColorMode] = createSignal<ColorMode>('HSV');
     const [hexInput, setHexInput] = createSignal('');
 
-    let containerRef: HTMLDivElement | undefined;
-
     // Sync HSV state when external value changes
     createEffect(() => {
         const newHsv = hexToHsv(props.value);
@@ -37,29 +35,15 @@ export const ColorPicker: Component<ColorPickerProps> = (props) => {
         setHexInput(props.value.toUpperCase());
     });
 
-    // Handle click outside to close picker
-    const handleClickOutside = (e: MouseEvent) => {
-        if (containerRef && !containerRef.contains(e.target as Node)) {
-            closePicker();
-        }
-    };
-
-    onMount(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-    });
-
-    onCleanup(() => {
-        document.removeEventListener('mousedown', handleClickOutside);
-    });
-
-    const openPicker = () => {
+    const togglePicker = () => {
         if (props.disabled) return;
-        setOriginalValue(props.value);
-        setIsPickerOpen(true);
-    };
 
-    const closePicker = () => {
-        if (isPickerOpen()) {
+        if (!isPickerOpen()) {
+            // Opening
+            setOriginalValue(props.value);
+            setIsPickerOpen(true);
+        } else {
+            // Closing
             const currentColor = hsvToHex(hsv().h, hsv().s, hsv().v);
             if (props.onCommit && currentColor.toLowerCase() !== originalValue().toLowerCase()) {
                 props.onCommit(currentColor, originalValue());
@@ -121,8 +105,8 @@ export const ColorPicker: Component<ColorPickerProps> = (props) => {
     const rgb = () => hexToRgb(props.value);
 
     return (
-        <div ref={containerRef} class={`relative ${props.class ?? ''}`}>
-            {/* Color bar (click to open) - aligned with HorizontalSlider */}
+        <div class={`relative ${props.class ?? ''}`}>
+            {/* Color bar (click to toggle) - aligned with HorizontalSlider */}
             <div class="flex items-center gap-2 h-6">
                 {/* Label */}
                 {props.label && (
@@ -134,24 +118,36 @@ export const ColorPicker: Component<ColorPickerProps> = (props) => {
                 {/* Color bar */}
                 <button
                     type="button"
-                    onClick={openPicker}
+                    onClick={togglePicker}
                     disabled={props.disabled}
-                    class={`
-                        flex-1 h-full rounded border border-surface-600
-                        transition-all duration-150
-                        hover:border-surface-400 focus:outline-none focus:ring-1 focus:ring-primary-500
-                        disabled:opacity-50 disabled:cursor-not-allowed
-                    `}
+                    class="flex-1 h-full rounded border border-surface-600 transition-all duration-150 hover:border-surface-400 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ "background-color": props.value }}
-                    title="Click to open color picker"
+                    title={isPickerOpen() ? "Click to close color picker" : "Click to open color picker"}
                 />
-                {/* Keyframe dot */}
-                <div class="w-2 h-2 rounded-full bg-surface-600 flex-shrink-0" />
+
+                {/* Chevron indicator to show expandability */}
+                <button
+                    type="button"
+                    onClick={togglePicker}
+                    class="w-4 h-4 flex items-center justify-center text-surface-400 hover:text-surface-200 focus:outline-none"
+                >
+                    <svg
+                        class={`w-3 h-3 transition-transform duration-200 ${isPickerOpen() ? 'rotate-180' : ''}`}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M6 9l6 6 6-6" />
+                    </svg>
+                </button>
             </div>
 
-            {/* Color picker popup */}
+            {/* Inline Color picker content */}
             <Show when={isPickerOpen()}>
-                <div class="absolute z-50 top-full left-0 mt-2 p-3 bg-surface-800 border border-surface-600 rounded-lg shadow-xl min-w-[240px]">
+                <div class="mt-2 mb-4 p-3 bg-surface-800 border border-surface-600 rounded-lg shadow-inner">
                     {/* Color wheel */}
                     <div class="flex justify-center mb-3">
                         <ColorWheel
@@ -169,12 +165,10 @@ export const ColorPicker: Component<ColorPickerProps> = (props) => {
                             <button
                                 type="button"
                                 onClick={() => setColorMode(mode)}
-                                class={`
-                                    flex-1 py-1.5 text-xs font-medium rounded transition-colors
-                                    ${colorMode() === mode
-                                        ? 'bg-surface-600 text-surface-100'
-                                        : 'bg-surface-700 text-surface-400 hover:text-surface-200'}
-                                `}
+                                class={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${colorMode() === mode
+                                    ? 'bg-surface-600 text-surface-100'
+                                    : 'bg-surface-700 text-surface-400 hover:text-surface-200'
+                                    }`}
                             >
                                 {mode}
                             </button>
@@ -299,3 +293,4 @@ export const ColorPicker: Component<ColorPickerProps> = (props) => {
         </div>
     );
 };
+

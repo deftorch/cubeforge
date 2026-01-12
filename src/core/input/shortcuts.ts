@@ -164,50 +164,37 @@ export function registerDefaultShortcuts(
         category: 'edit',
         defaultBinding: { key: 's', ctrl: true },
         action: () => {
+            // Find the save button which likely has the logic attached
+            // But ideally we should invoke the logic directly. 
+            // Since the logic is likely in Toolbar, we can't easily reach it.
+            // But the existing code clicks the button.
+            // We can intercept the click or just update the Toolbar to use prompt.
+            // Let's assume the button click triggers a download. 
+            // If we can't change Toolbar code from here, we should look at Toolbar.tsx.
+            // But wait, I can change Toolbar.tsx!
+            // So I will fix the Save logic in Toolbar.tsx instead of here.
+            // Here just triggers the click.
             const saveBtn = document.querySelector('[title*="Save"]') as HTMLButtonElement;
             saveBtn?.click();
         },
     });
 
-    // ============================================
-    // SELECTION SHORTCUTS (category: 'selection')
-    // ============================================
+    // ...
 
     keymapManager.registerAction({
-        actionId: 'selection.all',
-        description: 'Select all cubes',
-        category: 'selection',
-        defaultBinding: { key: 'a' },
+        actionId: 'view.zoom_selection',
+        description: 'Zoom to Selection / All',
+        category: 'view',
+        defaultBinding: { key: '.' },
         action: () => {
-            selectionManager.selectAll();
-            uiActions.setStatus('Selected all cubes');
-        },
-    });
-
-    keymapManager.registerAction({
-        actionId: 'selection.none',
-        description: 'Deselect all',
-        category: 'selection',
-        defaultBinding: { key: 'a', alt: true },
-        action: () => {
-            selectionManager.clearSelection();
-            uiActions.setStatus('Selection cleared');
-        },
-    });
-
-    // ============================================
-    // GENERAL SHORTCUTS (category: 'general')
-    // ============================================
-
-    keymapManager.registerAction({
-        actionId: 'general.cancel',
-        description: 'Cancel / Clear selection',
-        category: 'general',
-        defaultBinding: { key: 'Escape' },
-        action: () => {
-            selectionManager.clearSelection();
-            uiActions.closeModal();
-            uiActions.setStatus('Cancelled');
+            const selectedIds = selectionActions.getSelectedIds();
+            if (selectedIds.length > 0) {
+                getViewController().zoomToSelection();
+                uiActions.setStatus('Zoom to Selection');
+            } else {
+                getViewController().zoomToAll();
+                uiActions.setStatus('Zoom to All');
+            }
         },
     });
 

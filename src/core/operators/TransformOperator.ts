@@ -6,6 +6,7 @@ import { sceneActions } from '@/stores/sceneStore';
 import { uiActions } from '@/stores/uiStore';
 import { getTransformService } from '@/core/transform/TransformService';
 import { getSceneManager } from '@/core/scene/SceneManager';
+import { getSelectionManager } from '@/core/selection/SelectionManager';
 import type { InputDispatcher } from '@/core/input/InputDispatcher';
 import { InputLogger, type ComponentLogger } from '@/core/input/InputLogger';
 
@@ -49,6 +50,18 @@ export class TransformOperator implements IOperator {
         rotation: THREE.Euler;
         scale: THREE.Vector3;
     }> = new Map();
+
+    // Mouse-based transform state
+    private startMousePos: { x: number; y: number } | null = null;
+    private lastMousePos: { x: number; y: number } | null = null;
+    private pivotPoint: THREE.Vector3 = new THREE.Vector3();
+    private isPrecisionMode: boolean = false;
+
+    // Sensitivity constants
+    private static readonly TRANSLATE_SENSITIVITY = 0.02; // units per pixel
+    private static readonly ROTATE_SENSITIVITY = 0.5;     // degrees per pixel  
+    private static readonly SCALE_SENSITIVITY = 0.005;    // scale factor per pixel
+    private static readonly PRECISION_MULTIPLIER = 0.1;   // Shift = 10x slower
 
     private dispatcher: InputDispatcher | null = null;
     private logger: ComponentLogger;
@@ -106,6 +119,14 @@ export class TransformOperator implements IOperator {
         this.isActive = true;
         this.enabled = true;
 
+        // Initialize mouse tracking - will be set on first mouse move
+        this.startMousePos = null;
+        this.lastMousePos = null;
+        this.isPrecisionMode = false;
+
+        // Calculate pivot point (center of selection)
+        this.calculatePivotPoint();
+
         // Set as modal handler
         this.dispatcher?.setModalHandler(this);
 
@@ -114,7 +135,8 @@ export class TransformOperator implements IOperator {
 
         this.logger.debug('Invoked', {
             selectedCount: selectedIds.length,
-            mode: this.mode
+            mode: this.mode,
+            pivot: this.pivotPoint
         });
 
         return 'RUNNING_MODAL';
@@ -190,6 +212,7 @@ export class TransformOperator implements IOperator {
 
             this.updateStatus();
             event.preventDefault();
+            this.logger.debug('Axis constraint changed', { axis: this.axis, exclude: this.excludeAxis });
             return true;
         }
 
@@ -208,6 +231,7 @@ export class TransformOperator implements IOperator {
             this.applyNumericTransform();
             this.updateStatus();
             event.preventDefault();
+            this.logger.debug('Numeric input updated', { value: this.numericInput });
             return true;
         }
 
@@ -217,11 +241,13 @@ export class TransformOperator implements IOperator {
             this.applyNumericTransform();
             this.updateStatus();
             event.preventDefault();
+            this.logger.debug('Numeric input backspace', { value: this.numericInput });
             return true;
         }
 
         // Enter - confirm
         if (key === 'enter') {
+            this.logger.debug('Confirming transform (Enter)');
             this.execute();
             event.preventDefault();
             return true;
@@ -229,6 +255,7 @@ export class TransformOperator implements IOperator {
 
         // Escape - cancel
         if (key === 'escape') {
+            this.logger.debug('Cancelling transform (Escape)');
             this.cancel();
             event.preventDefault();
             return true;
@@ -241,11 +268,55 @@ export class TransformOperator implements IOperator {
      * Handle mouse movement for real-time transform preview
      */
     onMouseMove(event: MouseEvent): InputHandlerResult {
-        if (!this.isActive || this.numericInput.length > 0) return false;
+        if (!this.isActive) return false;
 
-        // For now, only numeric input is supported
-        // Mouse-based transform would require more complex screen-to-world conversion
-        return false;
+        // Skip if numeric input mode is active
+        if (this.numericInput.length > 0) return false;
+
+        // Track precision mode (Shift key)
+        this.isPrecisionMode = event.shiftKey;
+
+        // Initialize start position on first move
+        if (!this.startMousePos) {
+            this.startMousePos = { x: event.clientX, y: event.clientY };
+            this.lastMousePos = { x: event.clientX, y: event.clientY };
+            return true;
+        }
+
+        // Calculate delta from start position
+        const deltaX = event.clientX - this.startMousePos.x;
+        const deltaY = event.clientY - this.startMousePos.y;
+
+        // Apply precision multiplier if Shift is held
+        const sensitivity = this.isPrecisionMode
+            ? TransformOperator.PRECISION_MULTIPLIER
+            : 1.0;
+
+        // Apply transform based on mode
+        const selectedIds = selectionActions.getSelectedIds();
+        for (const id of selectedIds) {
+            const original = this.originalTransforms.get(id);
+            if (!original) continue;
+
+            if (this.mode === 'translate') {
+                this.applyMouseTranslation(id, original, deltaX, deltaY, sensitivity);
+            } else if (this.mode === 'rotate') {
+                this.applyMouseRotation(id, original, deltaX, sensitivity);
+            } else if (this.mode === 'scale') {
+                this.applyMouseScale(id, original, deltaX, sensitivity);
+            }
+        }
+
+        // Update last position
+        this.lastMousePos = { x: event.clientX, y: event.clientY };
+
+        // Sync selection outlines to follow the transformed mesh
+        getSelectionManager().syncOutlines();
+
+        // Update status with current value
+        this.updateMouseStatus(deltaX, deltaY, sensitivity);
+
+        return true;
     }
 
     /**
@@ -282,7 +353,6 @@ export class TransformOperator implements IOperator {
         if (isNaN(value)) return;
 
         const selectedIds = selectionActions.getSelectedIds();
-        const transformService = getTransformService();
 
         for (const id of selectedIds) {
             const original = this.originalTransforms.get(id);
@@ -430,6 +500,233 @@ export class TransformOperator implements IOperator {
     }
 
     /**
+     * Calculate pivot point (center of all selected objects)
+     */
+    private calculatePivotPoint(): void {
+        const selectedIds = selectionActions.getSelectedIds();
+        if (selectedIds.length === 0) {
+            this.pivotPoint.set(0, 0, 0);
+            return;
+        }
+
+        this.pivotPoint.set(0, 0, 0);
+        let count = 0;
+
+        for (const id of selectedIds) {
+            const original = this.originalTransforms.get(id);
+            if (original) {
+                this.pivotPoint.add(original.position);
+                count++;
+            }
+        }
+
+        if (count > 0) {
+            this.pivotPoint.divideScalar(count);
+        }
+    }
+
+    /**
+     * Apply translation based on mouse delta
+     */
+    private applyMouseTranslation(
+        id: string,
+        original: { position: THREE.Vector3 },
+        deltaX: number,
+        deltaY: number,
+        sensitivity: number
+    ): void {
+        const newPosition = original.position.clone();
+        const camera = getSceneManager().camera;
+
+        // Get camera right and up vectors for screen-space translation
+        const cameraRight = new THREE.Vector3();
+        const cameraUp = new THREE.Vector3();
+        camera.matrix.extractBasis(cameraRight, cameraUp, new THREE.Vector3());
+
+        const translateAmount = TransformOperator.TRANSLATE_SENSITIVITY * sensitivity;
+
+        if (this.axis === null) {
+            // Free movement in screen space
+            newPosition.addScaledVector(cameraRight, deltaX * translateAmount);
+            newPosition.addScaledVector(cameraUp, -deltaY * translateAmount);
+        } else if (this.excludeAxis) {
+            // Plane constraint (move in all axes except the constrained one)
+            const movement = new THREE.Vector3();
+            movement.addScaledVector(cameraRight, deltaX * translateAmount);
+            movement.addScaledVector(cameraUp, -deltaY * translateAmount);
+
+            if (this.axis === 'X') movement.x = 0;
+            if (this.axis === 'Y') movement.y = 0;
+            if (this.axis === 'Z') movement.z = 0;
+
+            newPosition.add(movement);
+        } else {
+            // Single axis constraint
+            // Use X delta for horizontal axes, Y delta for vertical feel
+            const axisVector = this.getAxisVector();
+            const projectedDelta = this.projectMouseToAxis(deltaX, deltaY, axisVector);
+            newPosition.addScaledVector(axisVector, projectedDelta * translateAmount);
+        }
+
+        getTransformService().updateTransform(id, { position: newPosition });
+
+        // Sync mesh visually
+        const mesh = getSceneManager().getMesh(id);
+        if (mesh) {
+            mesh.position.copy(newPosition);
+        }
+    }
+
+    /**
+     * Apply rotation based on mouse delta
+     */
+    private applyMouseRotation(
+        id: string,
+        original: { rotation: THREE.Euler },
+        deltaX: number,
+        sensitivity: number
+    ): void {
+        const angle = deltaX * TransformOperator.ROTATE_SENSITIVITY * sensitivity;
+        const radians = THREE.MathUtils.degToRad(angle);
+        const newRotation = original.rotation.clone();
+
+        if (this.axis === null) {
+            // Default to Z axis rotation (screen-space rotation)
+            newRotation.z += radians;
+        } else if (this.excludeAxis) {
+            // Rotate around other axes
+            if (this.axis !== 'X') newRotation.x += radians;
+            if (this.axis !== 'Y') newRotation.y += radians;
+            if (this.axis !== 'Z') newRotation.z += radians;
+        } else {
+            // Single axis rotation
+            if (this.axis === 'X') newRotation.x += radians;
+            if (this.axis === 'Y') newRotation.y += radians;
+            if (this.axis === 'Z') newRotation.z += radians;
+        }
+
+        getTransformService().updateTransform(id, { rotation: newRotation });
+
+        // Sync mesh visually
+        const mesh = getSceneManager().getMesh(id);
+        if (mesh) {
+            mesh.rotation.copy(newRotation);
+        }
+    }
+
+    /**
+     * Apply scale based on mouse delta
+     */
+    private applyMouseScale(
+        id: string,
+        original: { scale: THREE.Vector3 },
+        deltaX: number,
+        sensitivity: number
+    ): void {
+        // Scale factor based on horizontal mouse movement
+        const scaleDelta = deltaX * TransformOperator.SCALE_SENSITIVITY * sensitivity;
+        const scaleFactor = Math.max(0.01, 1 + scaleDelta);  // Prevent negative/zero scale
+        const newScale = original.scale.clone();
+
+        if (this.axis === null) {
+            // Uniform scale
+            newScale.multiplyScalar(scaleFactor);
+        } else if (this.excludeAxis) {
+            // Scale other axes
+            if (this.axis !== 'X') newScale.x *= scaleFactor;
+            if (this.axis !== 'Y') newScale.y *= scaleFactor;
+            if (this.axis !== 'Z') newScale.z *= scaleFactor;
+        } else {
+            // Single axis scale
+            if (this.axis === 'X') newScale.x = original.scale.x * scaleFactor;
+            if (this.axis === 'Y') newScale.y = original.scale.y * scaleFactor;
+            if (this.axis === 'Z') newScale.z = original.scale.z * scaleFactor;
+        }
+
+        getTransformService().updateTransform(id, { scale: newScale });
+
+        // Sync mesh visually
+        const mesh = getSceneManager().getMesh(id);
+        if (mesh) {
+            mesh.scale.copy(newScale);
+        }
+    }
+
+    /**
+     * Get unit vector for current axis constraint
+     */
+    private getAxisVector(): THREE.Vector3 {
+        if (this.axis === 'X') return new THREE.Vector3(1, 0, 0);
+        if (this.axis === 'Y') return new THREE.Vector3(0, 1, 0);
+        if (this.axis === 'Z') return new THREE.Vector3(0, 0, 1);
+        return new THREE.Vector3(1, 0, 0);  // Default
+    }
+
+    /**
+     * Project mouse delta onto a world-space axis
+     * Returns the magnitude of movement along that axis
+     */
+    private projectMouseToAxis(deltaX: number, deltaY: number, axisVector: THREE.Vector3): number {
+        const camera = getSceneManager().camera;
+
+        // Project the axis onto screen space
+        const axisStart = this.pivotPoint.clone();
+        const axisEnd = this.pivotPoint.clone().add(axisVector);
+
+        // Convert to NDC
+        axisStart.project(camera);
+        axisEnd.project(camera);
+
+        // Get screen direction of axis
+        const screenDir = new THREE.Vector2(
+            axisEnd.x - axisStart.x,
+            axisEnd.y - axisStart.y
+        ).normalize();
+
+        // Normalize mouse delta
+        const mouseDelta = new THREE.Vector2(deltaX, -deltaY);
+
+        // Dot product to get movement along axis
+        return mouseDelta.dot(screenDir);
+    }
+
+    /**
+     * Update status bar with mouse-based transform value
+     */
+    private updateMouseStatus(deltaX: number, deltaY: number, sensitivity: number): void {
+        let status = this.operatorName;
+
+        if (this.axis) {
+            if (this.excludeAxis) {
+                const axes = ['X', 'Y', 'Z'].filter(a => a !== this.axis);
+                status += ` (${axes.join('')} plane)`;
+            } else {
+                status += ` (${this.axis} axis)`;
+            }
+        }
+
+        // Show calculated value
+        let value: number;
+        if (this.mode === 'translate') {
+            value = Math.sqrt(deltaX * deltaX + deltaY * deltaY) *
+                TransformOperator.TRANSLATE_SENSITIVITY * sensitivity;
+            status += `: ${value.toFixed(2)} units`;
+        } else if (this.mode === 'rotate') {
+            value = deltaX * TransformOperator.ROTATE_SENSITIVITY * sensitivity;
+            status += `: ${value.toFixed(1)}°`;
+        } else if (this.mode === 'scale') {
+            value = 1 + deltaX * TransformOperator.SCALE_SENSITIVITY * sensitivity;
+            status += `: ${value.toFixed(2)}x`;
+        }
+
+        if (this.isPrecisionMode) {
+            status += ' [Precision]';
+        }
+
+        uiActions.setStatus(status);
+    }
+
+    /**
      * Cleanup after operation completes
      */
     private cleanup(): void {
@@ -439,6 +736,11 @@ export class TransformOperator implements IOperator {
         this.excludeAxis = false;
         this.numericInput = '';
         this.originalTransforms.clear();
+
+        // Reset mouse tracking state
+        this.startMousePos = null;
+        this.lastMousePos = null;
+        this.isPrecisionMode = false;
 
         // Release modal
         this.dispatcher?.setModalHandler(null);

@@ -3,8 +3,18 @@ import { getViewportShading, ShadingMode } from '@/core/viewport/ViewportShading
 import { getViewController } from '@/core/viewport/ViewController';
 import { getPivotController, PivotMode } from '@/core/transform/PivotController';
 import { uiStore } from '@/stores/uiStore';
+import { ViewportOverlaysMenu } from './ViewportOverlaysMenu';
 
 // Icons
+const OverlaysIcon = () => (
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M9 12h6" />
+        <path d="M12 9v6" />
+        <circle cx="12" cy="12" r="3" />
+    </svg>
+);
+
 const SolidIcon = () => (
     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
         <path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18-.21 0-.41-.06-.57-.18l-7.9-4.44A.991.991 0 013 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18.21 0 .41.06.57.18l7.9 4.44c.32.17.53.5.53.88v9z" />
@@ -145,6 +155,47 @@ export const ViewportHeader: Component = () => {
                 </Show>
             </div>
 
+            {/* Overlays Menu */}
+            <div class="relative group">
+                <button
+                    class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-surface-400 hover:bg-surface-800 hover:text-surface-200 transition-colors"
+                    title="Viewport Overlays"
+                    onClick={() => {
+                        const el = document.getElementById('overlays-menu');
+                        if (el) el.classList.toggle('hidden');
+                    }}
+                >
+                    <div class="flex items-center gap-1">
+                        <OverlaysIcon />
+                        <svg class="w-2.5 h-2.5 text-surface-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                </button>
+                <div id="overlays-menu" class="hidden absolute top-full left-0 mt-1 z-50">
+                    <ViewportOverlaysMenu />
+                </div>
+                {/* Close menu when clicking outside - simple implementation */}
+                <div
+                    class="fixed inset-0 z-40 hidden"
+                    onClick={(e) => {
+                        const menu = document.getElementById('overlays-menu');
+                        const toggle = e.currentTarget as HTMLElement;
+                        if (menu && !menu.classList.contains('hidden')) {
+                            menu.classList.add('hidden');
+                            toggle.classList.add('hidden');
+                        }
+                    }}
+                    ref={(el) => {
+                        // Hook up to button click to show this overlay
+                        const btn = el.parentElement?.querySelector('button');
+                        btn?.addEventListener('click', () => {
+                            el.classList.toggle('hidden');
+                        });
+                    }}
+                />
+            </div>
+
             {/* X-Ray toggle */}
             <button
                 class={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors
@@ -164,7 +215,7 @@ export const ViewportHeader: Component = () => {
             <div class="flex items-center gap-2 text-xs text-surface-500">
                 <span>Pivot: <span class="text-surface-300">{pivotController.getModeDisplayName()}</span></span>
             </div>
-        </div>
+        </div >
     );
 };
 
@@ -210,17 +261,19 @@ export const ViewportFooter: Component<{ cubeCount: number; selectedCount: numbe
         <div class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-surface-900/90 to-transparent
                 flex items-center px-4 gap-4 pointer-events-auto z-20">
             {/* Stats */}
-            <div class="flex items-center gap-3 text-xs font-mono">
-                <span class={fpsColor()}>
-                    <span class="text-surface-500">FPS:</span> {fps()}
-                </span>
-                <span class="text-surface-400">
-                    <span class="text-surface-500">Cubes:</span> {props.cubeCount}
-                </span>
-                <span class="text-surface-400">
-                    <span class="text-surface-500">Selected:</span> {props.selectedCount}
-                </span>
-            </div>
+            <Show when={uiStore.overlays.showTextInfo}>
+                <div class="flex items-center gap-3 text-xs font-mono">
+                    <span class={fpsColor()}>
+                        <span class="text-surface-500">FPS:</span> {fps()}
+                    </span>
+                    <span class="text-surface-400">
+                        <span class="text-surface-500">Cubes:</span> {props.cubeCount}
+                    </span>
+                    <span class="text-surface-400">
+                        <span class="text-surface-500">Selected:</span> {props.selectedCount}
+                    </span>
+                </div>
+            </Show>
 
             <div class="flex-1" />
 

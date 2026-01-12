@@ -30,9 +30,11 @@ export class OrbitControlsHandler implements IInputHandler {
      * Called when higher-priority handlers need exclusive input
      */
     disable(): void {
-        this.wasEnabled = this.orbitControls.enabled;
-        this.orbitControls.enabled = false;
-        this.logger.debug('Disabled');
+        if (this.orbitControls.enabled) {
+            this.wasEnabled = this.orbitControls.enabled;
+            this.orbitControls.enabled = false;
+            this.logger.debug('Disabled');
+        }
     }
 
     /**

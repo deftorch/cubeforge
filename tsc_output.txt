@@ -1,0 +1,33 @@
+src/components/layout/CollapsibleSection.tsx(1,32): error TS6133: 'createSignal' is declared but its value is never read.
+src/components/layout/RightPanel.tsx(3,22): error TS6133: 'sceneActions' is declared but its value is never read.
+src/components/ui/Input.tsx(16,19): error TS6133: 'rest' is declared but its value is never read.
+src/components/viewport/ViewportControls.tsx(4,30): error TS6133: 'PivotMode' is declared but its value is never read.
+src/components/viewport/ViewportControls.tsx(5,1): error TS6133: 'uiStore' is declared but its value is never read.
+src/core/input/InputContextManager.ts(1,45): error TS6196: 'IContextualHandler' is declared but never used.
+src/core/input/InputLogger.ts(357,50): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/core/input/__tests__/OperatorRegistry.test.ts(103,9): error TS2322: Type 'Mock<() => string>' is not assignable to type '() => OperatorResult'.
+  Type 'string' is not assignable to type 'OperatorResult'.
+src/core/interfaces/IOperator.ts(1,30): error TS6196: 'InputHandlerResult' is declared but never used.
+src/core/interfaces/index.ts(5,39): error TS2307: Cannot find module './IViewportShading' or its corresponding type declarations.
+src/core/scene/__tests__/CubeManager.test.ts(5,1): error TS6192: All imports in import declaration are unused.
+src/core/scene/__tests__/CubeManager.test.ts(6,1): error TS6133: 'HierarchyManager' is declared but its value is never read.
+src/core/scene/__tests__/HierarchyManager.test.ts(45,5): error TS2739: Type '{ scene: Scene; camera: PerspectiveCamera; renderer: WebGLRenderer; addMesh: Mock<(id: any, mesh: any) => void>; removeMesh: Mock<(id: any) => void>; ... 9 more ...; getCanvas: Mock<...>; }' is missing the following properties from type 'ISceneManager': setAxesVisible, screenToWorld
+src/core/scene/__tests__/MeshFactory.test.ts(1,44): error TS6133: 'vi' is declared but its value is never read.
+src/core/scene/__tests__/SceneManager.test.ts(1,32): error TS6133: 'vi' is declared but its value is never read.
+src/core/scene/__tests__/SceneSynchronizer.test.ts(4,26): error TS6196: 'ISceneManager' is declared but never used.
+src/core/scene/__tests__/SceneSynchronizer.test.ts(5,1): error TS6133: 'MeshFactory' is declared but its value is never read.
+src/core/scene/__tests__/SceneSynchronizer.test.ts(6,1): error TS6133: 'ViewportShading' is declared but its value is never read.
+src/core/scene/__tests__/SceneSynchronizer.test.ts(10,9): error TS6133: 'synchronizer' is declared but its value is never read.
+src/core/scene/__tests__/SceneSynchronizer.test.ts(19,9): error TS2739: Type '{ on: Mock<Procedure>; emit: Mock<Procedure>; off: Mock<Procedure>; }' is missing the following properties from type 'IEventBus': once, removeAllListeners, listenerCount
+src/core/tools/BoxSelectTool.ts(304,15): error TS6133: 'selectionProjection' is declared but its value is never read.
+src/core/tools/CircleSelectTool.ts(48,13): error TS6133: 'raycaster' is declared but its value is never read.
+src/core/tools/CircleSelectTool.ts(49,13): error TS6133: 'mouse' is declared but its value is never read.
+src/core/tools/__tests__/BoxSelectTool.test.ts(1,32): error TS6133: 'vi' is declared but its value is never read.
+src/core/transform/TransformService.ts(20,48): error TS2552: Cannot find name 'getMeshFactory'. Did you mean 'meshFactory'?
+src/core/transform/TransformService.ts(24,46): error TS2552: Cannot find name 'Transform'. Did you mean 'Transformer'?
+src/core/transform/TransformService.ts(141,56): error TS2552: Cannot find name 'Transform'. Did you mean 'Transformer'?
+src/core/transform/TransformService.ts(179,28): error TS2552: Cannot find name 'Transform'. Did you mean 'Transformer'?
+src/core/transform/TransformService.ts(180,36): error TS2552: Cannot find name 'Transform'. Did you mean 'Transformer'?
+src/core/viewport/NavigationGizmo.ts(31,13): error TS6133: 'container' is declared but its value is never read.
+src/core/viewport/__tests__/ViewportShading.test.ts(1,32): error TS6133: 'vi' is declared but its value is never read.
+src/stores/__tests__/historyStore.test.ts(2,1): error TS6133: 'createStore' is declared but its value is never read.

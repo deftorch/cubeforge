@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import type { IEventBus, ISceneManager } from '@/core/interfaces';
 import type { MeshFactory } from './MeshFactory';
 import type { ViewportShading } from '@/core/viewport/ViewportShading';
-import { sceneActions } from '@/stores/sceneStore';
 
 /**
  * SceneSynchronizer - Bridges Domain Events to 3D Scene Updates
@@ -41,8 +40,15 @@ export class SceneSynchronizer {
         // Create Mesh
         const mesh = this.meshFactory.createMesh(cube);
 
+        console.log('[SceneSynchronizer] Created mesh for cube:', {
+            id: cube.id,
+            name: cube.name,
+            pos: cube.transform.position,
+            meshPos: mesh.position
+        });
+
         // Attach to Scene or Parent
-        this.attachMesh(mesh, cube.parentId);
+        this.attachMesh(mesh, cube.id, cube.parentId); // Pass cube.id for registry lookup
 
         // Apply Viewport Shading (x-ray, wireframe, etc)
         this.viewportShading.applyToMesh(mesh);
@@ -96,19 +102,23 @@ export class SceneSynchronizer {
         }
     }
 
-    private attachMesh(mesh: THREE.Mesh, parentId?: string): void {
+    private attachMesh(mesh: THREE.Mesh, cubeId: string, parentId?: string): void {
         if (parentId) {
             const parentMesh = this.sceneManager.getMesh(parentId);
             if (parentMesh) {
                 parentMesh.add(mesh);
+                // Also add to registry!
+                this.sceneManager.addMesh(cubeId, mesh);
                 return;
             }
         }
 
         // Default to scene
-        if (!this.sceneManager.getMesh(mesh.name)) {
-            this.sceneManager.addMesh(mesh.name, mesh);
+        // Use ID for registry key!
+        if (!this.sceneManager.getMesh(cubeId)) {
+            this.sceneManager.addMesh(cubeId, mesh);
         } else {
+            // Already in registry? Just add object
             this.sceneManager.scene.add(mesh);
         }
     }

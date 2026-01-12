@@ -119,6 +119,10 @@ export class KeymapManager {
         entry.userBinding = binding;
         this.saveToStorage();
         this.syncToKeyboardManager();
+
+        this.logger.info(`Rebound action "${actionId}"`, {
+            newBinding: this.bindingToDisplayString(binding)
+        });
         return true;
     }
 
@@ -132,6 +136,7 @@ export class KeymapManager {
         delete entry.userBinding;
         this.saveToStorage();
         this.syncToKeyboardManager();
+        this.logger.info(`Reset action "${actionId}" to default`);
     }
 
     /**

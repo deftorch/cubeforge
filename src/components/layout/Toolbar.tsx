@@ -59,10 +59,18 @@ export const Toolbar: Component = () => {
     };
 
     const handleSave = async () => {
+        const currentName = sceneStore.name || 'cubeforge-project';
+        const name = prompt('Enter project name:', currentName);
+
+        if (name === null) return; // User cancelled
+
+        const fileName = name.trim() || 'cubeforge-project';
+        sceneActions.setName(fileName); // Update store name
+
         const cubes = sceneActions.getAllCubes();
         const data = {
             version: '1.0.0',
-            name: sceneStore.name,
+            name: fileName,
             cubes: cubes.map(c => ({
                 ...c,
                 transform: {
@@ -77,7 +85,7 @@ export const Toolbar: Component = () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${sceneStore.name || 'cubeforge-project'}.cbf`;
+        a.download = `${fileName}.cbf`;
         a.click();
         URL.revokeObjectURL(url);
 

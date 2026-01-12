@@ -20,6 +20,8 @@ import {
     getKeyboardManager,
     getOperatorRegistry,
     getInputContextManager,
+    DragDropHandler,
+    CursorPlacementHandler,
 } from '@/core/input';
 import { TransformOperator } from '@/core/operators';
 
@@ -57,6 +59,8 @@ export class CoreContext {
     public readonly orbitControlsHandler: OrbitControlsHandler;
     public readonly transformControlsHandler: TransformControlsHandler;
     public readonly keyboardHandler: KeyboardHandler;
+    public readonly dragDropHandler: DragDropHandler;
+    public readonly cursorPlacementHandler: CursorPlacementHandler;
 
     // Transform operators (modal)
     public readonly translateOperator: TransformOperator;
@@ -125,6 +129,8 @@ export class CoreContext {
         this.orbitControlsHandler = new OrbitControlsHandler(this.sceneManager.orbitControls);
         this.transformControlsHandler = new TransformControlsHandler(this.sceneManager.transformControls);
         this.keyboardHandler = new KeyboardHandler(getKeyboardManager());
+        this.dragDropHandler = new DragDropHandler(this.sceneManager, this.cubeManager);
+        this.cursorPlacementHandler = new CursorPlacementHandler();
 
         // Configure transform controls handler
         this.transformControlsHandler.setDispatcher(this.inputDispatcher);
@@ -138,7 +144,9 @@ export class CoreContext {
         this.inputDispatcher.register(this.transformControlsHandler); // Priority: 95 (MODAL)
         this.inputDispatcher.register(this.boxSelectTool);             // Priority: 75 (TOOL)
         this.inputDispatcher.register(this.circleSelectTool);          // Priority: 75 (TOOL)
+        this.inputDispatcher.register(this.dragDropHandler);           // Priority: 75 (TOOL)
         this.inputDispatcher.register(this.selectionHandler);          // Priority: 50 (SELECTION)
+        this.inputDispatcher.register(this.cursorPlacementHandler);    // Priority: 30 (CURSOR)
         this.inputDispatcher.register(this.orbitControlsHandler);      // Priority: 20 (NAVIGATION)
         this.inputDispatcher.register(this.keyboardHandler);           // Priority: 5 (FALLBACK)
 

@@ -118,9 +118,9 @@ const CubeItem: Component<{
             // Reparent: make draggedId child of this cube
             props.cubeManager.parentCube(draggedId, props.cube.id);
         } else {
-            // Before or After: set same parent as target
-            // (Full reorder requires order property - for now just reparent to same parent)
+            // Before or After: make sibling and set order
             props.cubeManager.parentCube(draggedId, props.cube.parentId);
+            props.cubeManager.reorderCube(draggedId, props.cube.id, position as 'before' | 'after');
         }
 
         dragDropActions.endDrag();

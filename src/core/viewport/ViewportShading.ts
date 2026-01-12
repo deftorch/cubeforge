@@ -27,10 +27,16 @@ export class ViewportShading {
     private currentMode: ShadingMode = 'solid';
     private xRayEnabled = false;
 
+    // Overlay state
+    private wireframeOverlayEnabled = false;
+    private wireframeOverlayOpacity = 0.5;
+
     // Store original material state for restoration
     private originalStates: Map<string, OriginalMaterialState> = new Map();
-    // Wireframe overlays
+    // Shading mode wireframes (green)
     private wireframeMaterials: Map<string, THREE.LineSegments> = new Map();
+    // Overlay wireframes (black/white)
+    private overlayWireframes: Map<string, THREE.LineSegments> = new Map();
 
     constructor() { }
 
@@ -95,6 +101,30 @@ export class ViewportShading {
     }
 
     /**
+     * Set Wireframe Overlay (renders visible wireframe ON TOP of current shading)
+     */
+    setWireframeOverlay(enabled: boolean, opacity: number): void {
+        this.wireframeOverlayEnabled = enabled;
+        this.wireframeOverlayOpacity = opacity;
+
+        const sceneManager = getSceneManager();
+        const meshes = sceneManager.getAllMeshes();
+
+        if (enabled) {
+            // Create/update overlays for all meshes
+            meshes.forEach(mesh => this.updateOverlayWireframe(mesh));
+        } else {
+            // Remove all overlays
+            this.overlayWireframes.forEach((wireframe) => {
+                sceneManager.scene.remove(wireframe);
+                wireframe.geometry.dispose();
+                (wireframe.material as THREE.Material).dispose();
+            });
+            this.overlayWireframes.clear();
+        }
+    }
+
+    /**
      * Apply current shading mode and x-ray to a single mesh
      * Call this when creating new cubes to inherit current render mode
      */
@@ -108,6 +138,11 @@ export class ViewportShading {
         // Apply x-ray if enabled (after shading mode, so it stacks properly)
         if (this.xRayEnabled) {
             this.applyXRayToMesh(mesh);
+        }
+
+        // Apply wireframe overlay if enabled
+        if (this.wireframeOverlayEnabled) {
+            this.updateOverlayWireframe(mesh);
         }
     }
 
@@ -369,17 +404,72 @@ export class ViewportShading {
     }
 
     /**
+     * Create or update overlay wireframe for a mesh
+     */
+    private updateOverlayWireframe(mesh: THREE.Mesh): void {
+        const cubeId = mesh.userData.cubeId;
+        if (!cubeId) return;
+
+        const sceneManager = getSceneManager();
+
+        // Check if we need to remove existing one first (e.g. geometry change)
+        // For now, simpler to reuse or recreate if missing
+
+        let wireframe = this.overlayWireframes.get(cubeId);
+
+        if (!wireframe) {
+            const edges = new THREE.EdgesGeometry(mesh.geometry);
+            const lineMaterial = new THREE.LineBasicMaterial({
+                color: 0x000000, // Black wireframe for overlay
+                linewidth: 1,
+                transparent: true,
+                opacity: this.wireframeOverlayOpacity,
+                depthTest: true,
+            });
+
+            wireframe = new THREE.LineSegments(edges, lineMaterial);
+            sceneManager.scene.add(wireframe);
+            this.overlayWireframes.set(cubeId, wireframe);
+        } else {
+            // Update opacity
+            const mat = wireframe.material as THREE.LineBasicMaterial;
+            mat.opacity = this.wireframeOverlayOpacity;
+            mat.needsUpdate = true;
+        }
+
+        // Sync transform
+        mesh.updateMatrixWorld(true);
+        wireframe.position.setFromMatrixPosition(mesh.matrixWorld);
+        wireframe.quaternion.setFromRotationMatrix(mesh.matrixWorld);
+        const worldScale = new THREE.Vector3();
+        mesh.getWorldScale(worldScale);
+        wireframe.scale.copy(worldScale);
+
+        wireframe.visible = mesh.visible;
+    }
+
+    /**
      * Remove a mesh from tracking (call when cube is deleted)
      */
     removeMesh(cubeId: string): void {
-        // Remove wireframe if exists
+        const sceneManager = getSceneManager();
+
+        // Implement shading wireframe removal
         const wireframe = this.wireframeMaterials.get(cubeId);
         if (wireframe) {
-            const sceneManager = getSceneManager();
             sceneManager.scene.remove(wireframe);
             wireframe.geometry.dispose();
             (wireframe.material as THREE.Material).dispose();
             this.wireframeMaterials.delete(cubeId);
+        }
+
+        // Implement overlay wireframe removal
+        const overlay = this.overlayWireframes.get(cubeId);
+        if (overlay) {
+            sceneManager.scene.remove(overlay);
+            overlay.geometry.dispose();
+            (overlay.material as THREE.Material).dispose();
+            this.overlayWireframes.delete(cubeId);
         }
 
         // Remove original state
@@ -397,6 +487,17 @@ export class ViewportShading {
         // Update saved original state and re-apply current mode
         this.originalStates.delete(cubeId); // Clear old state
         this.applyToMesh(mesh);
+
+        if (this.wireframeOverlayEnabled) {
+            // Recreate overlay as geometry might have changed
+            const overlay = this.overlayWireframes.get(cubeId);
+            if (overlay) {
+                sceneManager.scene.remove(overlay);
+                overlay.geometry.dispose();
+                this.overlayWireframes.delete(cubeId);
+            }
+            this.updateOverlayWireframe(mesh);
+        }
     }
 
     /**
@@ -411,10 +512,16 @@ export class ViewportShading {
             mesh.visible = visible;
         }
 
-        // Update wireframe visibility
+        // Update shading wireframe visibility
         const wireframe = this.wireframeMaterials.get(cubeId);
         if (wireframe) {
             wireframe.visible = visible;
+        }
+
+        // Update overlay wireframe visibility
+        const overlay = this.overlayWireframes.get(cubeId);
+        if (overlay) {
+            overlay.visible = visible && this.wireframeOverlayEnabled;
         }
     }
 

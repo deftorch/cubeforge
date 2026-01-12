@@ -55,6 +55,27 @@ export interface UIStoreState {
 
     // Status message
     statusMessage: string;
+
+    // Overlays
+    overlays: ViewportOverlayState;
+}
+
+export interface ViewportOverlayState {
+    showGrid: boolean;
+    showFloor: boolean;
+    showAxisX: boolean;
+    showAxisY: boolean;
+    showAxisZ: boolean;
+    gridScale: number;
+    gridSubdivisions: number;
+    showTextInfo: boolean;
+    show3DCursor: boolean;
+    showAnnotations: boolean;
+    showExtras: boolean;
+    showOrigins: boolean;
+    showOutlineSelected: boolean;
+    showWireframe: boolean;
+    wireframeOpacity: number;
 }
 
 const [uiStore, setUIStore] = createStore<UIStoreState>({
@@ -85,6 +106,25 @@ const [uiStore, setUIStore] = createStore<UIStoreState>({
 
     // Status message
     statusMessage: 'Ready',
+
+    // Overlays
+    overlays: {
+        showGrid: true,
+        showFloor: true,
+        showAxisX: true,
+        showAxisY: true,
+        showAxisZ: false,
+        gridScale: 1.0,
+        gridSubdivisions: 10,
+        showTextInfo: true,
+        show3DCursor: false,
+        showAnnotations: false,
+        showExtras: true,
+        showOrigins: true,
+        showOutlineSelected: true,
+        showWireframe: false,
+        wireframeOpacity: 1.0,
+    },
 });
 
 // UI Actions
@@ -227,6 +267,13 @@ export const uiActions = {
      */
     setAngleSnap(degrees: number) {
         setUIStore('angleSnap', degrees);
+    },
+
+    /**
+     * Set overlay property
+     */
+    setOverlay<K extends keyof ViewportOverlayState>(key: K, value: ViewportOverlayState[K]) {
+        setUIStore('overlays', key, value);
     },
 };
 

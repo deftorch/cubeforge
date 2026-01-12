@@ -1,4 +1,4 @@
-import type { IInputHandler } from '@/core/interfaces';
+import type { IInputHandler, InputHandlerResult } from '@/core/interfaces';
 import { isEventConsumed } from '@/core/interfaces';
 import type { InputContextManager } from './InputContextManager';
 import { InputLogger, type ComponentLogger } from './InputLogger';
@@ -28,17 +28,9 @@ import { InputLogger, type ComponentLogger } from './InputLogger';
 export class InputDispatcher {
     private handlers: IInputHandler[] = [];
     private activeModal: IInputHandler | null = null;
-    private debugMode = false;
     private contextManager: InputContextManager | null = null;
     private useContexts = false;
     private logger: ComponentLogger = InputLogger.create('InputDispatcher');
-
-    /**
-     * Enable debug logging for event flow
-     */
-    setDebugMode(enabled: boolean): void {
-        this.debugMode = enabled;
-    }
 
     /**
      * Set the InputContextManager for context-aware event routing
@@ -119,10 +111,15 @@ export class InputDispatcher {
      * When a modal is active, only it and higher-priority handlers receive events
      */
     setModalHandler(handler: IInputHandler | null): void {
+        const prevModal = this.activeModal;
         this.activeModal = handler;
 
-        if (this.debugMode && handler) {
-            console.log(`InputDispatcher: Modal activated - "${handler.id}"`);
+        if (prevModal !== handler) {
+            if (handler) {
+                this.logger.info(`Modal activated: ${handler.id}`, { priority: handler.priority });
+            } else {
+                this.logger.info(`Modal deactivated (was: ${prevModal?.id})`);
+            }
         }
     }
 
@@ -281,20 +278,24 @@ export class InputDispatcher {
         const handlersToProcess = this.getActiveHandlerList();
 
         for (const handler of handlersToProcess) {
-            if (!this.shouldReceiveEvent(handler)) continue;
+            if (!this.shouldReceiveEvent(handler)) {
+                // Optional: Log why handler was skipped (verbose debug only)
+                // this.logger.debug('Skipping handler', { handlerId: handler.id, reason: 'blocked' });
+                continue;
+            }
 
             const method = handler[methodName];
             if (typeof method !== 'function') continue;
 
             try {
                 // @ts-expect-error - We know the method signature is correct
-                const result = method.call(handler, event);
+                const result = method.call(handler, event) as InputHandlerResult;
 
                 // Use isEventConsumed to check both boolean and InputEventResult
-                if (isEventConsumed(result)) {
-                    this.logger.debug('Event consumed', {
-                        handlerId: handler.id,
-                        method: methodName
+                if (result !== undefined && isEventConsumed(result)) {
+                    this.logger.info(`Event consumed by ${handler.id}`, {
+                        method: methodName,
+                        eventType: event.type
                     });
                     return true;
                 }

@@ -1,5 +1,5 @@
 import { Component, onMount, onCleanup, createEffect } from 'solid-js';
-import * as THREE from 'three';
+
 import { useCoreContext } from '@/components/CoreProvider';
 import { getViewportShading } from '@/core/viewport/ViewportShading';
 import { uiStore, uiActions } from '@/stores/uiStore';
@@ -47,14 +47,6 @@ export const Viewport: Component = () => {
         // ============================================
 
         const handleMouseDown = (event: MouseEvent) => {
-            // Special case: Shift + Right click to place 3D cursor
-            // This is a viewport-specific action, not handled by dispatcher
-            if (event.shiftKey && event.button === 2) {
-                event.preventDefault();
-                pivotController.getCursor().placeAtMouse(event);
-                return;
-            }
-
             // Dispatch to registered handlers
             inputDispatcher.dispatchMouseDown(event);
         };
@@ -120,140 +112,29 @@ export const Viewport: Component = () => {
         canvas.addEventListener('mousemove', handleMouseMove);
         canvas.addEventListener('mouseup', handleMouseUp);
         canvas.addEventListener('wheel', handleWheel);
-        canvas.addEventListener('keydown', handleKeyDown);
         canvas.addEventListener('contextmenu', handleContextMenu);
+
+        // Global Input Listeners
+        window.addEventListener('keydown', handleKeyDown);
 
         // ============================================
         // DRAG AND DROP HANDLERS (for create cube from toolbar + move from hierarchy)
         // ============================================
 
-        // Ghost cube for drag preview
-        let ghostCube: THREE.Mesh | null = null;
-
-        const createGhostCube = () => {
-            if (ghostCube) return; // Already exists
-
-            const geometry = new THREE.BoxGeometry(1, 1, 1);
-            const material = new THREE.MeshBasicMaterial({
-                color: 0x4a9eff,
-                transparent: true,
-                opacity: 0.4,
-                wireframe: false,
-            });
-            ghostCube = new THREE.Mesh(geometry, material);
-            ghostCube.name = '__ghost_cube__';
-
-            // Add wireframe overlay for better visibility
-            const wireframeMaterial = new THREE.MeshBasicMaterial({
-                color: 0x4a9eff,
-                wireframe: true,
-                transparent: true,
-                opacity: 0.8,
-            });
-            const wireframe = new THREE.Mesh(geometry.clone(), wireframeMaterial);
-            wireframe.name = '__ghost_wireframe__';
-            ghostCube.add(wireframe);
-
-            sceneManager.scene.add(ghostCube);
-        };
-
-        const removeGhostCube = () => {
-            if (ghostCube) {
-                sceneManager.scene.remove(ghostCube);
-                ghostCube.geometry.dispose();
-                (ghostCube.material as THREE.Material).dispose();
-                // Dispose wireframe child
-                ghostCube.children.forEach(child => {
-                    if (child instanceof THREE.Mesh) {
-                        child.geometry.dispose();
-                        (child.material as THREE.Material).dispose();
-                    }
-                });
-                ghostCube = null;
-            }
-        };
-
-        const updateGhostPosition = (clientX: number, clientY: number) => {
-            if (!ghostCube) return;
-            const worldPosition = sceneManager.screenToWorld(clientX, clientY);
-            ghostCube.position.copy(worldPosition);
-        };
-
         const handleDragEnter = (event: DragEvent) => {
-            if (event.dataTransfer?.types.includes('application/cube-forge-create')) {
-                createGhostCube();
-                updateGhostPosition(event.clientX, event.clientY);
-            }
+            inputDispatcher.dispatchDragEnter(event);
         };
 
         const handleDragOver = (event: DragEvent) => {
-            // Accept cube-forge-create (new cube) or cube-forge-move (existing cube)
-            if (event.dataTransfer?.types.includes('application/cube-forge-create') ||
-                event.dataTransfer?.types.includes('application/cube-forge-move')) {
-                event.preventDefault();
-                event.dataTransfer!.dropEffect = event.dataTransfer?.types.includes('application/cube-forge-create') ? 'copy' : 'move';
-
-                // Update ghost cube position
-                if (event.dataTransfer?.types.includes('application/cube-forge-create')) {
-                    if (!ghostCube) createGhostCube();
-                    updateGhostPosition(event.clientX, event.clientY);
-                }
-            }
+            inputDispatcher.dispatchDragOver(event);
         };
 
         const handleDragLeave = (event: DragEvent) => {
-            // Only remove if we're actually leaving the container
-            const rect = containerRef?.getBoundingClientRect();
-            if (rect && (
-                event.clientX < rect.left ||
-                event.clientX > rect.right ||
-                event.clientY < rect.top ||
-                event.clientY > rect.bottom
-            )) {
-                removeGhostCube();
-            }
+            inputDispatcher.dispatchDragLeave(event);
         };
 
         const handleDrop = (event: DragEvent) => {
-            event.preventDefault();
-
-            // Remove ghost cube
-            removeGhostCube();
-
-            // Handle new cube creation
-            const createType = event.dataTransfer?.getData('application/cube-forge-create');
-            if (createType === 'create-cube') {
-                // Calculate 3D position from mouse coordinates
-                const worldPosition = sceneManager.screenToWorld(event.clientX, event.clientY);
-
-                // Create cube at the calculated position with full transform
-                const cube = cubeManager.createCubeWithUndo({
-                    transform: {
-                        position: worldPosition,
-                        rotation: new THREE.Euler(0, 0, 0),
-                        scale: new THREE.Vector3(1, 1, 1),
-                    }
-                });
-
-                selectionActions.select(cube.id);
-                uiActions.setStatus(`Created ${cube.name} at (${worldPosition.x.toFixed(1)}, ${worldPosition.y.toFixed(1)}, ${worldPosition.z.toFixed(1)})`);
-                return;
-            }
-
-            // Handle moving existing cube from hierarchy
-            const moveType = event.dataTransfer?.getData('application/cube-forge-move');
-            if (moveType) {
-                const cubeId = moveType;
-                const worldPosition = sceneManager.screenToWorld(event.clientX, event.clientY);
-
-                // Move the cube to the new position
-                cubeManager.updateTransform(cubeId, {
-                    position: worldPosition,
-                });
-
-                selectionActions.select(cubeId);
-                uiActions.setStatus(`Moved cube to (${worldPosition.x.toFixed(1)}, ${worldPosition.y.toFixed(1)}, ${worldPosition.z.toFixed(1)})`);
-            }
+            inputDispatcher.dispatchDrop(event);
         };
 
 
@@ -280,9 +161,9 @@ export const Viewport: Component = () => {
             canvas.removeEventListener('mousemove', handleMouseMove);
             canvas.removeEventListener('mouseup', handleMouseUp);
             canvas.removeEventListener('wheel', handleWheel);
-            canvas.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keydown', handleKeyDown);
             canvas.removeEventListener('contextmenu', handleContextMenu);
-            removeGhostCube(); // Clean up ghost cube if exists
+            // removeGhostCube(); // Logic moved to DragDropHandler
             sceneManager.unmount();
             selectionManager.dispose();
             boxSelectTool.dispose();
@@ -300,9 +181,22 @@ export const Viewport: Component = () => {
         sceneManager.setTransformMode(uiStore.transformMode);
     });
 
-    // React to grid visibility changes
+    // React to overlay changes
     createEffect(() => {
-        sceneManager.setGridVisible(uiStore.showGrid);
+        // Grid & Floor
+        sceneManager.setGridOverlays(uiStore.overlays);
+
+        // Selection Outlines
+        selectionManager.setOutlinesVisible(uiStore.overlays.showOutlineSelected);
+
+        // Wireframe Overlay
+        getViewportShading().setWireframeOverlay(
+            uiStore.overlays.showWireframe,
+            uiStore.overlays.wireframeOpacity
+        );
+
+        // Origins
+        sceneManager.setOriginsVisible(uiStore.overlays.showOrigins);
     });
 
     // React to selection changes - attach transform controls

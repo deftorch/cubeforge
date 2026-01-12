@@ -1,6 +1,8 @@
 /**
  * Keyboard shortcut configuration
  */
+import { InputLogger, type ComponentLogger } from './InputLogger';
+
 export interface ShortcutConfig {
     key: string;
     ctrl?: boolean;
@@ -22,7 +24,7 @@ export interface ShortcutConfig {
 export class KeyboardManager {
     private shortcuts: Map<string, ShortcutConfig> = new Map();
     private enabled = true;
-    private boundHandler: ((event: KeyboardEvent) => void) | null = null;
+    private logger: ComponentLogger = InputLogger.create('KeyboardManager');
 
     /**
      * Generate unique key for shortcut
@@ -43,6 +45,7 @@ export class KeyboardManager {
     register(config: ShortcutConfig): void {
         const key = this.getShortcutKey(config);
         this.shortcuts.set(key, config);
+        // this.logger.debug(`Registered shortcut: ${key}`);
     }
 
     /**
@@ -58,6 +61,7 @@ export class KeyboardManager {
      */
     setEnabled(enabled: boolean): void {
         this.enabled = enabled;
+        this.logger.debug(`KeyboardManager ${enabled ? 'enabled' : 'disabled'}`);
     }
 
     /**
@@ -93,39 +97,14 @@ export class KeyboardManager {
         event.preventDefault();
 
         try {
+            this.logger.info(`Shortcut triggered: ${shortcutKey}`, {
+                description: config.description
+            });
             config.action();
             return true; // Event was handled
         } catch (error) {
-            console.error(`Error executing shortcut "${shortcutKey}":`, error);
+            this.logger.error(`Error executing shortcut "${shortcutKey}"`, error as Error);
             return false;
-        }
-    }
-
-    /**
-     * Legacy handler for direct window attachment
-     * @deprecated Use handleEvent() via InputDispatcher instead
-     */
-    private handleKeyDown = (event: KeyboardEvent): void => {
-        this.handleEvent(event);
-    };
-
-    /**
-     * Attach to window
-     */
-    attach(): void {
-        if (this.boundHandler) return;
-
-        this.boundHandler = this.handleKeyDown;
-        window.addEventListener('keydown', this.boundHandler);
-    }
-
-    /**
-     * Detach from window
-     */
-    detach(): void {
-        if (this.boundHandler) {
-            window.removeEventListener('keydown', this.boundHandler);
-            this.boundHandler = null;
         }
     }
 

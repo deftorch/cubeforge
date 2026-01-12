@@ -138,11 +138,26 @@ getInputContextManager().switchContext(
 
 ---
 
+## InputLogger
+
+Utility logging terpusat untuk debugging dan performance tracking:
+
+```typescript
+import { InputLogger } from '@/core/input/InputLogger';
+
+InputLogger.enableDebug(); // Aktifkan di browser console
+InputLogger.getHistory();  // Lihat history log
+```
+
+---
+
 ## Testing
 
-Unit tests tersedia di `src/core/input/__tests__/`:
-- `InputDispatcher.test.ts`
-- `KeyboardManager.test.ts`
-- `InputContextManager.test.ts`
+Unit tests lengkap tersedia (Coverage ~58 tests):
+- `TransformOperator.test.ts`: Logic modal, constraints, numeric input
+- `KeymapManager.test.ts`: Registration, rebinding, conflict logic
+- `OperatorRegistry.test.ts`: Lifecycle & cancellation
+- `InputContextManager.test.ts`: Context switching
+- `InputDispatcher.test.ts`: Routing logic
 
 Integration tests dilakukan via browser testing.

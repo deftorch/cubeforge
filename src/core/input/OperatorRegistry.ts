@@ -90,13 +90,16 @@ export class OperatorRegistry {
             this.cancel();
         }
 
+        this.logger.info(`Invoking operator: ${operatorId}`);
         const result = operator.invoke();
 
         if (result === 'RUNNING_MODAL') {
             this.activeOperator = operator;
+            this.logger.debug(`Operator "${operatorId}" running modally`);
         } else if (result === 'FINISHED') {
             // Instant operator - execute immediately
             operator.execute();
+            this.logger.debug(`Operator "${operatorId}" finished immediately`);
         }
 
         return result;
@@ -112,6 +115,8 @@ export class OperatorRegistry {
         if (!this.activeOperator) {
             return 'CANCELLED';
         }
+
+        const operatorId = this.activeOperator.id;
 
         // Capture undo data BEFORE executing
         const undoData = this.recordHistory
@@ -130,6 +135,7 @@ export class OperatorRegistry {
             this.activeOperator = null;
         }
 
+        this.logger.info(`Executed operator: ${operatorId}`, { result });
         return result;
     }
 
@@ -139,8 +145,10 @@ export class OperatorRegistry {
     cancel(): void {
         if (!this.activeOperator) return;
 
+        const operatorId = this.activeOperator.id;
         this.activeOperator.cancel();
         this.activeOperator = null;
+        this.logger.info(`Cancelled operator: ${operatorId}`);
     }
 
     /**

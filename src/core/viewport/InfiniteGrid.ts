@@ -38,6 +38,11 @@ uniform float uDistance;
 uniform float uFadeStrength;
 uniform float uAxisColorStrength;
 uniform int uPlaneType; // 0 = XZ, 1 = XY, 2 = YZ
+uniform bool uShowGrid;
+uniform bool uShowFloor;
+uniform bool uShowAxisX;
+uniform bool uShowAxisY;
+uniform bool uShowAxisZ;
 
 varying vec3 vWorldPosition;
 varying vec3 vPosition;
@@ -63,11 +68,13 @@ void main() {
     vec2 planeCoords = getPlaneCoords();
     float d = 1.0 - min(length(planeCoords) / uDistance, 1.0);
     
-    float g1 = getGrid(uSize1, planeCoords);
-    float g2 = getGrid(uSize2, planeCoords);
-    
-    // Combine grids with different intensities
-    float grid = g1 * 0.5 + g2;
+    // Grid lines
+    float grid = 0.0;
+    if (uShowGrid) {
+        float g1 = getGrid(uSize1, planeCoords);
+        float g2 = getGrid(uSize2, planeCoords);
+        grid = g1 * 0.5 + g2;
+    }
     
     // Fade based on distance
     float fade = pow(d, uFadeStrength);
@@ -75,34 +82,80 @@ void main() {
     // Axis highlighting based on plane type
     vec3 color = uColor;
     float axisWidth = 0.06;
+    bool isAxis = false;
     
     if (uPlaneType == 0) {
         // XZ plane: X axis (red) along Z=0, Z axis (blue) along X=0
         if (abs(vWorldPosition.z) < axisWidth * uSize1) {
-            color = mix(color, vec3(0.85, 0.2, 0.2), uAxisColorStrength);
+            if (uShowAxisX) {
+                color = mix(color, vec3(0.85, 0.2, 0.2), uAxisColorStrength);
+                isAxis = true;
+            }
         }
         if (abs(vWorldPosition.x) < axisWidth * uSize1) {
-            color = mix(color, vec3(0.2, 0.4, 0.85), uAxisColorStrength);
+             if (uShowAxisZ) { // Note: Z axis is blue
+                color = mix(color, vec3(0.2, 0.4, 0.85), uAxisColorStrength);
+                isAxis = true;
+            }
         }
     } else if (uPlaneType == 1) {
         // XY plane: X axis (red) along Y=0, Y axis (green) along X=0
         if (abs(vWorldPosition.y) < axisWidth * uSize1) {
-            color = mix(color, vec3(0.85, 0.2, 0.2), uAxisColorStrength);
+            if (uShowAxisX) {
+                color = mix(color, vec3(0.85, 0.2, 0.2), uAxisColorStrength);
+                isAxis = true;
+            }
         }
         if (abs(vWorldPosition.x) < axisWidth * uSize1) {
-            color = mix(color, vec3(0.2, 0.85, 0.2), uAxisColorStrength);
+            if (uShowAxisY) {
+                color = mix(color, vec3(0.2, 0.85, 0.2), uAxisColorStrength);
+                isAxis = true;
+            }
         }
     } else if (uPlaneType == 2) {
         // YZ plane: Y axis (green) along Z=0, Z axis (blue) along Y=0
         if (abs(vWorldPosition.z) < axisWidth * uSize1) {
-            color = mix(color, vec3(0.2, 0.85, 0.2), uAxisColorStrength);
+            if (uShowAxisY) {
+                color = mix(color, vec3(0.2, 0.85, 0.2), uAxisColorStrength);
+                isAxis = true;
+            }
         }
         if (abs(vWorldPosition.y) < axisWidth * uSize1) {
-            color = mix(color, vec3(0.2, 0.4, 0.85), uAxisColorStrength);
+             if (uShowAxisZ) {
+                color = mix(color, vec3(0.2, 0.4, 0.85), uAxisColorStrength);
+                isAxis = true;
+            }
         }
     }
     
     float alpha = grid * fade;
+
+    // Floor visibility (just the axes if grid is off, or everything?)
+    // If showFloor is false, we verify if maybe we should still show axes?
+    // Usually "Floor" implies the grid plane.
+    // If uShowFloor is false, we might want to hide the grid lines but keep axes if they are enabled?
+    // Or maybe uShowFloor controls the grid lines visibility primarily on the floor plane?
+    // Let's assume uShowGrid controls the lines everywhere.
+    // And uShowFloor might be redundant if we just use uShowGrid?
+    // In Blender "Floor" checkbox toggles the grid on the floor plane.
+    
+    // Logic update:
+    // If we are on XZ plane (Floor) and uShowFloor is false, hide grid lines.
+    // Axes are independent.
+    
+    if (uPlaneType == 0 && !uShowFloor) {
+        alpha = 0.0;
+    }
+    
+    // Always show axes if enabled, even if floor/grid is off
+    if (isAxis) {
+        alpha = max(alpha, fade); // Ensure axes are visible
+    } else {
+        // If not an axis, apply grid visibility rules
+        if ((!uShowGrid && !isAxis) || (uPlaneType == 0 && !uShowFloor && !isAxis)) {
+             alpha = 0.0;
+        }
+    }
     
     if (alpha <= 0.0) discard;
     
@@ -129,6 +182,11 @@ export class InfiniteGrid extends THREE.Mesh {
         uFadeStrength: { value: number };
         uAxisColorStrength: { value: number };
         uPlaneType: { value: number };
+        uShowGrid: { value: boolean };
+        uShowFloor: { value: boolean };
+        uShowAxisX: { value: boolean };
+        uShowAxisY: { value: boolean };
+        uShowAxisZ: { value: boolean };
     };
 
     private currentPlane: GridPlane = 'xz';
@@ -156,6 +214,11 @@ export class InfiniteGrid extends THREE.Mesh {
             uFadeStrength: { value: fadeStrength },
             uAxisColorStrength: { value: axisColors ? 1.0 : 0.0 },
             uPlaneType: { value: 0 }, // 0 = XZ, 1 = XY, 2 = YZ
+            uShowGrid: { value: true },
+            uShowFloor: { value: true },
+            uShowAxisX: { value: true },
+            uShowAxisY: { value: true },
+            uShowAxisZ: { value: false },
         };
 
         // Create shader material
@@ -297,6 +360,23 @@ export class InfiniteGrid extends THREE.Mesh {
      */
     setAxisColors(enabled: boolean): void {
         this.uniforms.uAxisColorStrength.value = enabled ? 1.0 : 0.0;
+    }
+
+    /**
+     * Set overlays visibility
+     */
+    setOverlays(options: {
+        showGrid?: boolean;
+        showFloor?: boolean;
+        showAxisX?: boolean;
+        showAxisY?: boolean;
+        showAxisZ?: boolean;
+    }): void {
+        if (options.showGrid !== undefined) this.uniforms.uShowGrid.value = options.showGrid;
+        if (options.showFloor !== undefined) this.uniforms.uShowFloor.value = options.showFloor;
+        if (options.showAxisX !== undefined) this.uniforms.uShowAxisX.value = options.showAxisX;
+        if (options.showAxisY !== undefined) this.uniforms.uShowAxisY.value = options.showAxisY;
+        if (options.showAxisZ !== undefined) this.uniforms.uShowAxisZ.value = options.showAxisZ;
     }
 
     /**

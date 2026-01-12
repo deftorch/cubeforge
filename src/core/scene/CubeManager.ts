@@ -78,7 +78,11 @@ export class CubeManager {
             id: generateUUID(),
             description: `Create ${cube.name}`,
             execute: () => { }, // Already executed
-            undo: () => this.deleteCubeInternal(cube.id),
+            undo: () => {
+                this.deleteCubeInternal(cube.id);
+                // Ensure visual sync
+                this.eventBus.emit('cube:deleted', { cubeIds: [cube.id] });
+            },
             timestamp: Date.now(),
         });
 
@@ -100,9 +104,6 @@ export class CubeManager {
                 this.transformService.syncMeshToStore(child.id);
             }
         });
-
-        // Remove from Three.js scene logic moved to SceneSynchronizer
-        // via 'cube:deleted' event
 
         // Remove from store
         sceneActions.removeCube(cubeId);
@@ -139,7 +140,8 @@ export class CubeManager {
             execute: () => { }, // Already executed
             undo: () => {
                 sceneActions.addCube(cubeData);
-                // Mesh creation handled by SceneSynchronizer
+                // Ensure visual sync
+                this.eventBus.emit('cube:created', { cube: cubeData });
             },
             timestamp: Date.now(),
         });
@@ -179,7 +181,8 @@ export class CubeManager {
             undo: () => {
                 cubesData.forEach(cube => {
                     sceneActions.addCube(cube);
-                    // Mesh creation handled by SceneSynchronizer
+                    // Ensure visual sync
+                    this.eventBus.emit('cube:created', { cube });
                 });
             },
             timestamp: Date.now(),
@@ -378,6 +381,12 @@ export class CubeManager {
                 if ('visible' in previousState) this.setVisible(cubeId, previousState.visible as boolean);
                 if ('locked' in previousState) this.setLocked(cubeId, previousState.locked as boolean);
                 if ('name' in previousState) this.rename(cubeId, previousState.name as string);
+
+                // For other properties (transform, material), SceneSynchronizer might need convincing
+                // But material changes usually go through MaterialService. 
+                // Transform is handled by TransformService directly?
+                // Let's ensure generic update event is fired for other props if needed
+                this.eventBus.emit('cube:updated', { cubeId, changes: previousState });
             },
             timestamp: Date.now(),
         });

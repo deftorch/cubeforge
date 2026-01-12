@@ -15,6 +15,7 @@ export class SelectionManager {
 
     // Selection visual
     private selectionOutlines: Map<string, THREE.LineSegments> = new Map();
+    private isVisible: boolean = true;
 
     constructor(
         private sceneManager: ISceneManager,
@@ -184,6 +185,19 @@ export class SelectionManager {
      * In Object Mode: Shows outlines for selected cubes AND their descendants
      * In Edit Mode: Shows outlines ONLY for directly selected cubes
      */
+    /**
+     * Set outlines visibility
+     */
+    setOutlinesVisible(visible: boolean): void {
+        this.isVisible = visible;
+        this.updateSelectionVisuals();
+    }
+
+    /**
+     * Update selection visual outlines
+     * In Object Mode: Shows outlines for selected cubes AND their descendants
+     * In Edit Mode: Shows outlines ONLY for directly selected cubes
+     */
     private updateSelectionVisuals(): void {
         const directlySelectedIds = new Set(selectionActions.getSelectedIds());
 
@@ -191,13 +205,17 @@ export class SelectionManager {
         const isEditMode = uiStore.interactionMode === 'edit';
 
         // Build the full set of IDs that should have outlines
-        let outlineIds = new Set<string>(directlySelectedIds);
+        let outlineIds = new Set<string>();
 
-        if (!isEditMode) {
-            // Object Mode: Include all descendants of selected cubes
-            for (const cubeId of directlySelectedIds) {
-                const descendants = this.getDescendants(cubeId);
-                descendants.forEach(id => outlineIds.add(id));
+        // Only populate if visible
+        if (this.isVisible) {
+            outlineIds = new Set<string>(directlySelectedIds);
+            if (!isEditMode) {
+                // Object Mode: Include all descendants of selected cubes
+                for (const cubeId of directlySelectedIds) {
+                    const descendants = this.getDescendants(cubeId);
+                    descendants.forEach(id => outlineIds.add(id));
+                }
             }
         }
 
@@ -252,11 +270,14 @@ export class SelectionManager {
     private createOutline(mesh: THREE.Mesh): THREE.LineSegments {
         const edges = new THREE.EdgesGeometry(mesh.geometry);
         const lineMaterial = new THREE.LineBasicMaterial({
-            color: 0x00aaff,
+            color: 0x00aaff, // Bright blue
             linewidth: 2,
+            depthTest: false, // Make visible through objects
+            depthWrite: false,
         });
 
         const outline = new THREE.LineSegments(edges, lineMaterial);
+        outline.renderOrder = 999; // Draw on top
 
         // Use WORLD coordinates (critical for child meshes)
         const worldPos = new THREE.Vector3();

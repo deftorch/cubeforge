@@ -67,6 +67,30 @@ export const sceneActions = {
     },
 
     /**
+     * Reorder cube within a layer
+     */
+    reorderCubeInLayer(layerId: string, cubeId: string, toIndex: number) {
+        const layerIndex = sceneStore.layers.findIndex(l => l.id === layerId);
+        if (layerIndex === -1) return;
+
+        const currentIds = [...sceneStore.layers[layerIndex].cubeIds];
+        const fromIndex = currentIds.indexOf(cubeId);
+        if (fromIndex === -1) return;
+
+        // Remove
+        currentIds.splice(fromIndex, 1);
+
+        // Insert
+        // Clamp index
+        const targetIndex = Math.max(0, Math.min(toIndex, currentIds.length));
+        currentIds.splice(targetIndex, 0, cubeId);
+
+        setSceneStore('layers', layerIndex, 'cubeIds', currentIds);
+        setSceneStore('isDirty', true);
+        setSceneStore('metadata', 'modified', new Date().toISOString());
+    },
+
+    /**
      * Remove a cube from the scene
      */
     removeCube(cubeId: string) {
@@ -122,6 +146,13 @@ export const sceneActions = {
      */
     getCube(cubeId: string): Cube | undefined {
         return sceneStore.cubes[cubeId];
+    },
+
+    /**
+     * Get layer by ID
+     */
+    getLayer(layerId: string): Layer | undefined {
+        return sceneStore.layers.find(l => l.id === layerId);
     },
 
     /**

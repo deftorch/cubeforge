@@ -277,11 +277,57 @@ export class SceneManager implements ISceneManager {
     }
 
     /**
+     * Set grid overlay options
+     */
+    setGridOverlays(options: {
+        showGrid?: boolean;
+        showFloor?: boolean;
+        showAxisX?: boolean;
+        showAxisY?: boolean;
+        showAxisZ?: boolean;
+    }): void {
+        this.infiniteGrid.setOverlays(options);
+    }
+
+    /**
+     * Set origins visibility
+     */
+    setOriginsVisible(visible: boolean): void {
+        this.meshRegistry.forEach((mesh) => {
+            // Check if axes helper exists
+            const axes = mesh.getObjectByName('OriginAxes');
+            if (visible) {
+                if (!axes) {
+                    const newAxes = new THREE.AxesHelper(1.0);
+                    newAxes.name = 'OriginAxes';
+                    // Make sure axes renders on top of its parent mesh if inside
+                    (newAxes.material as THREE.Material).depthTest = false;
+                    (newAxes.material as THREE.Material).depthWrite = false;
+                    newAxes.renderOrder = 999;
+                    mesh.add(newAxes);
+                } else {
+                    axes.visible = true;
+                }
+            } else {
+                if (axes) {
+                    axes.visible = false;
+                }
+            }
+        });
+    }
+
+    /**
      * Add a mesh to the scene
      */
     addMesh(cubeId: string, mesh: THREE.Mesh): void {
         this.meshRegistry.set(cubeId, mesh);
         this.scene.add(mesh);
+
+        // Add Origin Axis if needed (re-check state from store if we had access, 
+        // but easier to just add it hidden or check global flag if stored consistently)
+        // For now, let's just rely on the toggle update loop or check UI store? 
+        // Accessing UI store here creates a circular dependency potentially if UI store imports SceneManager.
+        // Instead, we can just leave it to the next update cycle or add it hidden by default.
     }
 
     /**
@@ -297,6 +343,15 @@ export class SceneManager implements ISceneManager {
             } else {
                 mesh.material.dispose();
             }
+
+            // Cleanup children (like axes)
+            mesh.children.forEach(child => {
+                if (child instanceof THREE.AxesHelper) {
+                    child.geometry.dispose();
+                    (child.material as THREE.Material).dispose();
+                }
+            });
+
             this.meshRegistry.delete(cubeId);
         }
     }

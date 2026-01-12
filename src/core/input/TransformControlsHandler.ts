@@ -3,6 +3,7 @@ import { InputPriority } from '@/core/interfaces';
 import type { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import type { InputDispatcher } from './InputDispatcher';
 import type { OrbitControlsHandler } from './OrbitControlsHandler';
+import { InputLogger, type ComponentLogger } from '@/core/input/InputLogger';
 
 /**
  * TransformControlsHandler - Handler for transform gizmo interactions
@@ -25,6 +26,7 @@ export class TransformControlsHandler implements IInputHandler {
     private dispatcher: InputDispatcher | null = null;
     private orbitControlsHandler: OrbitControlsHandler | null = null;
     private isDragging = false;
+    private logger: ComponentLogger = InputLogger.create('TransformControls');
 
     // Callbacks for external integration
     private onDragStartCallback: ((objectId: string) => void) | null = null;
@@ -114,6 +116,9 @@ export class TransformControlsHandler implements IInputHandler {
         // Get the object being transformed
         const object = this.transformControls.object;
         const objectId = object?.userData?.cubeId;
+
+        this.logger.debug(`Drag started`, { objectId });
+
         if (objectId) {
             this.onDragStartCallback?.(objectId);
         }
@@ -134,6 +139,9 @@ export class TransformControlsHandler implements IInputHandler {
         // Get the object that was transformed
         const object = this.transformControls.object;
         const objectId = object?.userData?.cubeId;
+
+        this.logger.debug(`Drag ended`);
+
         if (objectId) {
             this.onDragEndCallback?.(objectId);
         }

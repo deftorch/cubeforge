@@ -185,8 +185,10 @@ export const HorizontalSlider: Component<HorizontalSliderProps> = (props) => {
                 </div>
             </div>
 
-            {/* Keyframe dot (Blender-style indicator) */}
-            <div class="w-2 h-2 rounded-full bg-surface-600 flex-shrink-0" title="Not animated" />
+            {/* Keyframe dot (Blender-style indicator) - wrapped in w-4 to match ColorPicker chevron width for alignment */}
+            <div class="w-4 h-4 flex items-center justify-center flex-shrink-0">
+                <div class="w-2 h-2 rounded-full bg-surface-600" title="Not animated" />
+            </div>
         </div>
     );
 };

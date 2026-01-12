@@ -15,3 +15,5 @@ export { TransformControlsHandler } from './TransformControlsHandler';
 export { KeyboardHandler } from './KeyboardHandler';
 export { InputLogger } from './InputLogger';
 export type { LogLevel, LogEntry, ComponentLogger } from './InputLogger';
+export { DragDropHandler } from './DragDropHandler';
+export { CursorPlacementHandler } from './CursorPlacementHandler';
