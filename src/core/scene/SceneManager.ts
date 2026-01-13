@@ -28,6 +28,9 @@ export class SceneManager implements ISceneManager {
     // Mesh registry
     private meshRegistry: Map<string, THREE.Mesh> = new Map();
 
+    // Overlays state
+    private originsVisible = false;
+
     // Animation
     private animationId: number | null = null;
     private isRunning = false;
@@ -285,6 +288,8 @@ export class SceneManager implements ISceneManager {
         showAxisX?: boolean;
         showAxisY?: boolean;
         showAxisZ?: boolean;
+        gridScale?: number;
+        gridSubdivisions?: number;
     }): void {
         this.infiniteGrid.setOverlays(options);
     }
@@ -293,6 +298,7 @@ export class SceneManager implements ISceneManager {
      * Set origins visibility
      */
     setOriginsVisible(visible: boolean): void {
+        this.originsVisible = visible;
         this.meshRegistry.forEach((mesh) => {
             // Check if axes helper exists
             const axes = mesh.getObjectByName('OriginAxes');
@@ -323,11 +329,15 @@ export class SceneManager implements ISceneManager {
         this.meshRegistry.set(cubeId, mesh);
         this.scene.add(mesh);
 
-        // Add Origin Axis if needed (re-check state from store if we had access, 
-        // but easier to just add it hidden or check global flag if stored consistently)
-        // For now, let's just rely on the toggle update loop or check UI store? 
-        // Accessing UI store here creates a circular dependency potentially if UI store imports SceneManager.
-        // Instead, we can just leave it to the next update cycle or add it hidden by default.
+        // Apply origins visibility if enabled
+        if (this.originsVisible) {
+            const newAxes = new THREE.AxesHelper(1.0);
+            newAxes.name = 'OriginAxes';
+            (newAxes.material as THREE.Material).depthTest = false;
+            (newAxes.material as THREE.Material).depthWrite = false;
+            newAxes.renderOrder = 999;
+            mesh.add(newAxes);
+        }
     }
 
     /**

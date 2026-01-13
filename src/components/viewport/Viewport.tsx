@@ -184,7 +184,11 @@ export const Viewport: Component = () => {
     // React to overlay changes
     createEffect(() => {
         // Grid & Floor
-        sceneManager.setGridOverlays(uiStore.overlays);
+        sceneManager.setGridOverlays({
+            ...uiStore.overlays,
+            gridScale: uiStore.overlays.gridScale,
+            gridSubdivisions: uiStore.overlays.gridSubdivisions
+        });
 
         // Selection Outlines
         selectionManager.setOutlinesVisible(uiStore.overlays.showOutlineSelected);
@@ -194,6 +198,9 @@ export const Viewport: Component = () => {
             uiStore.overlays.showWireframe,
             uiStore.overlays.wireframeOpacity
         );
+
+        // Geometry Opacity
+        getViewportShading().setGeometryOpacity(uiStore.overlays.geometryOpacity);
 
         // Origins
         sceneManager.setOriginsVisible(uiStore.overlays.showOrigins);

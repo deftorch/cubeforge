@@ -70,12 +70,23 @@ export interface ViewportOverlayState {
     gridSubdivisions: number;
     showTextInfo: boolean;
     show3DCursor: boolean;
+    showStatistics: boolean;
     showAnnotations: boolean;
     showExtras: boolean;
+    showBones: boolean;
+    showLightColors: boolean;
+    showMotionPaths: boolean;
+    showRelationshipLines: boolean;
     showOrigins: boolean;
+    showOriginsAll: boolean;
     showOutlineSelected: boolean;
     showWireframe: boolean;
     wireframeOpacity: number;
+    geometryOpacity: number;
+    showFaceOrientation: boolean;
+    viewerNodeColorOpacity: number;
+    showAttributeText: boolean;
+    showMotionTracking: boolean;
 }
 
 const [uiStore, setUIStore] = createStore<UIStoreState>({
@@ -118,12 +129,23 @@ const [uiStore, setUIStore] = createStore<UIStoreState>({
         gridSubdivisions: 10,
         showTextInfo: true,
         show3DCursor: false,
+        showStatistics: false,
         showAnnotations: false,
         showExtras: true,
+        showBones: false,
+        showLightColors: false,
+        showMotionPaths: false,
+        showRelationshipLines: false,
         showOrigins: true,
+        showOriginsAll: false,
         showOutlineSelected: true,
         showWireframe: false,
         wireframeOpacity: 1.0,
+        geometryOpacity: 1.0,
+        showFaceOrientation: false,
+        viewerNodeColorOpacity: 1.0,
+        showAttributeText: false,
+        showMotionTracking: false,
     },
 });
 
